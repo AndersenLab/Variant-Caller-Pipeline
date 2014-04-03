@@ -28,13 +28,16 @@ for f in `ls $bamdir/bam_headers/*`
         header_spec=$(egrep "SM:[A-Za-z_0-9\.]+" --only-matching  $f)
         if [[ "${header_spec/SM:/}" != "$(basename ${f/.bam_header/})" ]]
          then echo "Mismatch header:$header_spec filename:$(basename ${f/.bam_header/})"
-         else echo "Okay"
         fi
 done
 
-# Download and install liftover
-wget -O "liftover" http://hgdownload.cse.ucsc.edu/admin/exe/macOSX.x86_64/liftOver
-mv liftover /usr/local/bin
+# Download and install UCSC utilities.
+for p in liftOver faSplit liftUp faToTwoBit twoBitToFa fetchChromSizes faSize
+do
+  wget -O "$p" "http://hgdownload.cse.ucsc.edu/admin/exe/macOSX.x86_64/$p"
+  chmod 775 "$p"
+  mv "$p" "/usr/local/bin"
+done
 
 # Download Data from "The million mutation project: A new approach to genetics in Caenorhabditis elegans"
-wget 
+wget 'http://genome.sfu.ca/mmp/mmp_wild_isolate_data_Mar13.txt'
