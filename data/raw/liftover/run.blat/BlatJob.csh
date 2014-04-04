@@ -58,13 +58,14 @@ end
 # Align unsplit target sequence(s) to .lst of 2bit specs for 5000 chunks
 # of query:
 blat $targetList reSplitQuery.lst tmpUnlifted.psl \
-  -tileSize=11 -ooc=11.ooc \
+  -tileSize=11 -ooc=../11.ooc \
   -minScore=100 -minIdentity=98 -fastMap -noHead
 
 # Lift query coords back up:
 liftUp -pslQ -nohead tmpOut.psl query.lft warn tmpUnlifted.psl
 
 # Move final result into place:
+echo `pwd`
 mv tmpOut.psl $outPsl
 
 popd

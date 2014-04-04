@@ -111,21 +111,13 @@ export twoBitDirectory="../assemblies"
 
 cat << EOF > template
 #LOOP
-./blatJob.csh \$(path1) \$(path2) ${workDirectory}/run.blat/psl/\$(file1)/\$(file2).psl
+./blatJob.csh ../\$(path1) ../\$(path2) ../psl/\$(file1)/\$(file2).psl
 #ENDLOOP
 EOF
 
 ## construct jobList for each query chunk blat to each target chunk:
-
-
-
 gensub2 t.lst q.lst template jobList
 chmod +x jobList 
-# the resulting jobList is a listing of commands to be run which will perform
-# the blat on each specified target/query chunk pair of sequences
-# With the blatJob.csh in place in this run.blat directory, you can simply
-# run each job in the jobList:
-#    chmod +x ./jobList
-#    ./jobList > jobs.log 2>&1
 
-#######################################################################
+# Run
+./jobList
