@@ -38,6 +38,3 @@ do
   chmod 775 "$p"
   mv "$p" "/usr/local/bin"
 done
-
-# Download Data from "The million mutation project: A new approach to genetics in Caenorhabditis elegans"
-wget 'http://genome.sfu.ca/mmp/mmp_wild_isolate_data_Mar13.txt'
