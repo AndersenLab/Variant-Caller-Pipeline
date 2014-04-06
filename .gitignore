@@ -3,6 +3,8 @@
 *.bam_header
 *.fq
 *.fa
+*.gff
+*.vcf
 
 #--------------------------#
 # Specific Files to Ignore #
