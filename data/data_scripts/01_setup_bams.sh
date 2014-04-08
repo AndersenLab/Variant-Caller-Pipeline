@@ -5,19 +5,16 @@
 bamdir="../raw/bam"
 mkdir "$bamdir/bam_headers"
 
-wget --timestamping --directory-prefix $bamdir -i ../raw/bam_urls/BGI1_urls.txt
-wget --timestamping --directory-prefix $bamdir -i ../raw/bam_urls/BGI2_urls.txt
-wget --timestamping --directory-prefix $bamdir -i ../raw/bam_urls/BGI3_Princeton_urls.txt
+# Retrieve Bams, rename appropriately
+sh 01a_download_rename_bams.sh
 
-# Rename appropriately; Output BAM headers
+
+# Pull out headers
 for file in `ls $bamdir/*.bam*`
 do
     if [ -f $FILE ]; then
-      # create a variable that strips URL params from end of filename.
-      sfile=${file/?ticket=t_euEWjVvI/}
-      mv "$file" "$sfile"
       # Output sam headers and rename extension: 
-      samtools view -H $sfile > "$bamdir/bam_headers/$(basename ${sfile/.bam/.bam_header})"
+      samtools view -H $file > "$bamdir/bam_headers/$(basename ${file/.bam/.bam_header})"
     fi
 done
 
