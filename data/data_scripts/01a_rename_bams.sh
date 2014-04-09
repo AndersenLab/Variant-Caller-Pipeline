@@ -25,7 +25,7 @@ mv MY23.bam Princeton_P_MY23.bam
 mv DL238.bam Princeton_P_DL238.bam
 mv JU258.bam Princeton_P_JU258.bam
 mv CB4856_CGC.bam Princeton_P_CB4856_CGC.bam
-mv N2_CGC.bam Princeton_P_N2_CGC.bam
+mv N2_CGC.bam Princeton_P_N2_CGC.bam_N2_CGC.bam
 mv AF16.bam Princeton_P_AF16.bam
 mv HK104.bam Princeton_P_HK104.bam
 mv QX1430.bam Princeton_P_QX1430.bam
@@ -199,6 +199,7 @@ mv WN2017_130123_I186_FCC1GJUACXX_L6_CHKPEI13010008.bam BGI1_RET6_WN2017.bam
 mv WN2018_130123_I186_FCC1GJUACXX_L4_CHKPEI13010007.bam BGI1_RET5_WN2018.bam
 mv WN2019_130123_I186_FCC1GJUACXX_L7_CHKPEI13010009.bam BGI1_RET7_WN2019.bam
 mv WN2020_130123_I186_FCC1GJUACXX_L7_CHKPEI13010009.bam BGI1_RET7_WN2020.bam
+mv WN2021#2_130119_I861_FCC1GWRACXX_L6_CHKPEI13010003.bam BGI1_RET1_WN2021.bam
 
 #---------------#
 # Download BGI2 #
@@ -208,9 +209,54 @@ wget --timestamping --directory-prefix $bamdir -i ../raw/bam_urls/BGI2_urls.txt
 fix_bam_names()
 
 
+
+
 #---------------#
 # Download BGI3 #
 #---------------#
 
 wget --timestamping --directory-prefix $bamdir -i ../raw/bam_urls/BGI3_urls.txt
 fix_bam_names()
+
+mv IndexJU792.bam BGI3_RET6a_JU792.bam
+mv IndexNIC199.bam BGI3_RET6a_NIC199.bam
+mv IndexNIC236.bam BGI3_RET6a_NIC236.bam
+mv IndexPX179.bam BGI3_RET6a_PX179.bam
+mv IndexQX1214.bam BGI3_RET6a_QX1214.bam
+mv IndexCB4857_UK.bam BGI3_RET6b_CB4857_UK.bam
+mv IndexGXW1.bam BGI3_RET6b_GXW1.bam
+mv IndexJU1581.bam BGI3_RET6b_JU1581.bam
+mv IndexJU2001.bam BGI3_RET6b_JU2001.bam
+mv IndexJU393.bam BGI3_RET6b_JU393.bam
+mv IndexJU406.bam BGI3_RET6b_JU406.bam
+mv IndexN2_HRH.bam BGI3_RET6b_N2_HRH.bam
+mv IndexPB303.bam BGI3_RET6b_PB303.bam
+mv IndexQG538.bam BGI3_RET6b_QG538.bam
+mv IndexQX2266.bam BGI3_RET6b_QX2266.bam
+mv IndexWN2001.bam BGI3_RET6b_WN2001.bam
+mv IndexWN2017.bam BGI3_RET6b_WN2017.bam
+mv IndexCB4854.bam BGI3_RET7a_CB4854.bam
+mv IndexCX11271.bam BGI3_RET7a_CX11271.bam
+mv IndexED3040.bam BGI3_RET7a_ED3040.bam
+mv IndexED3077.bam BGI3_RET7a_ED3077.bam
+mv IndexEG4946.bam BGI3_RET7a_EG4946.bam
+mv IndexJU323.bam BGI3_RET7a_JU323.bam
+mv IndexJU774.bam BGI3_RET7a_JU774.bam
+mv IndexJU847.bam BGI3_RET7a_JU847.bam
+mv IndexMY18.bam BGI3_RET7a_MY18.bam
+mv IndexNIC200.bam BGI3_RET7a_NIC200.bam
+mv IndexPS2025.bam BGI3_RET7a_PS2025.bam
+mv IndexQG558.bam BGI3_RET7a_QG558.bam
+mv IndexCB4932.bam BGI3_RET7b_CB4932.bam
+mv IndexJU1530.bam BGI3_RET7b_JU1530.bam
+mv IndexJU1652.bam BGI3_RET7b_JU1652.bam
+mv IndexJU367.bam BGI3_RET7b_JU367.bam
+mv IndexJU561.bam BGI3_RET7b_JU561.bam
+mv IndexQG537.bam BGI3_RET7b_QG537.bam
+mv IndexQX1216.bam BGI3_RET7b_QX1216.bam
+mv IndexWN2010.bam BGI3_RET7b_WN2010.bam
+mv IndexWN2013.bam BGI3_RET7b_WN2013.bam
+mv IndexWN2016.bam BGI3_RET7b_WN2016.bam
+mv IndexWN2019.bam BGI3_RET7b_WN2019.bam
+mv IndexWN2020.bam BGI3_RET7b_WN2020.bam
+
