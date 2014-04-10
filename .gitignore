@@ -9,8 +9,12 @@
 #--------------------------#
 # Specific Files to Ignore #
 #--------------------------#
+<<<<<<< HEAD
 BGI1_urls.txt
 BGI2_urls.txt
 BGI3_Princeton_urls.txt
 download_bams.sh
 mmp_wild_isolate_data_Mar13.txt
+=======
+data/raw/bam_urls/*
+>>>>>>> e55a203ff42358c51c13d6e6ba12afc3a7cf7f85
