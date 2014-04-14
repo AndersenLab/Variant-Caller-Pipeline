@@ -1,5 +1,6 @@
 # Large Sequencing formats to ignore.
 *.bam
+*.bam.zip
 *.bam_header
 *.fq
 *.fq.gz
