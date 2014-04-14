@@ -1,0 +1,91 @@
+# Missing BGI1
+
+* No problems!
+
+# Missing BGI2 Strains (Not in Vault!)
+
+(96/162); 66 missing.
+
+	AB1
+	AB4
+	AF16
+	CB4851_CGC
+	CB4853_UK
+	CB4856_CGC
+	CB4857_CGC
+	CB4858_UK
+	CX11254
+	CX11276
+	CX11285
+	CX11314
+	CX11315
+	DL226
+	DL238
+	ED3011
+	ED3017
+	ED3046
+	ED3049
+	EG4347
+	EG4725
+	HK104
+	JT11398
+	JU1088
+	JU1200
+	JU1246
+	JU1491
+	JU1580
+	JU1586
+	JU2007
+	JU258
+	JU315
+	JU346
+	JU360
+	JU363
+	JU440
+	JU775
+	JU778
+	JU782
+	JU830
+	LKC34
+	MY1
+	MY10
+	MY16
+	MY23
+	N2_CGC
+	NIC1
+	NIC196
+	NIC197
+	NIC2
+	NIC207
+	NIC232
+	NIC3
+	PB306
+	QG556
+	QX1211
+	QX1215
+	QX1430
+	QX1791
+	QX1792
+	QX1793
+	QX1794
+	QX2268
+	WN2021
+
+# Missing BGI3 Strains
+
+__(!160/162)__
+
+	JU1409
+	JU1440
+	!!! NIC4
+
+JU1409 and JU1440 are the two missing, __NIC4__ is also missing, but is likely IndexC4.bam, which I do not have a match for.
+
+# Totals
+
+* 494 Total Strains Sequenced
+* 426 Vault Files; 68 missing, 
+	* 66 missing from BGI2.
+	* 2 missing from BGI3.
+
+
