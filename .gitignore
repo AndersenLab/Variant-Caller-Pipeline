@@ -2,6 +2,7 @@
 *.bam
 *.bam_header
 *.fq
+*.fq.gz
 *.fa
 *.gff
 *.sam
