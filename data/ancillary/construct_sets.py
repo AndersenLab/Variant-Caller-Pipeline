@@ -17,7 +17,7 @@ df['idx'] = df.index % 2
 # Output 1st Repeat
 df[df['idx'] == 0]['full_name'].to_csv('02a_BGI2_rep1.txt', index=False)
 # Output 2nd Repeat
-df[df['idx'] == 1]['full_name'].to_csv('02b_BGI2_rep2.txt', index=False)
+df[df['idx'] == 0]['full_name'].to_csv('02b_BGI2_rep2.txt', index=False)
 # pull out dups
 
 # Output BGI 1 & 3 for all 7 libs. 
