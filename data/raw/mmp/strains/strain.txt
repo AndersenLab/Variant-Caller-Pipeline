@@ -1,0 +1,1 @@
+chrchr	pos	wt_dna	mut_dna
