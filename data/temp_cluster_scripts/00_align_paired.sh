@@ -28,20 +28,88 @@
 #SBATCH --workdir=/lscr2/andersenlab/dec211/data/fasta
 
 BAM_DIR="../bam/"
+PICARD="../../tools/"
 
 ###############
 # Get FASTQ's #
 ###############
 
-f1=${1}_1.fq.gz
-f2=${1}_2.fq.gz
+# Convert f1 and f2 to arrays
+f1=(${1//-/ })
+f2=(${2//-/ })
 
-echo "${BAM_DIR}${f1/.fq.gz/mem}"
-echo "TIME START mem: $SECONDS"
-bwa mem -t 8 ../reference/ce10/ce10.fa ${f1} ${f2} | samtools view -b -S -h  - | samtools sort - ${BAM_DIR}`basename ${f1/.fq.gz/mem}`
-echo "TIME END mem: $SECONDS"
+echo $1
+echo $2
+
+bam_name=${BAM_DIR}${f1[0]}-${f1[1]}-${f1[2]}-${f1[3]}-${f2[3]}.bam
+
+
+##################
+# Error Checking #
+##################
+
+
+# Check to see if bam exists; if yes, abort
+if [ -f "$bam_name" ]
+then
+	echo "Bam File exists; aborting."
+	exit 0
+fi
+
+# Check that both files exist.
+if [ ! -f "$1" ]
+then
+	echo "$1 does not exist; aborting."
+	exit 0
+fi
+
+if [ ! -f "$2" ]
+then
+	echo "$2 does not exist; aborting."
+	exit 0
+fi
+
+# Double check checksums
+f1_md5=`md5sum $1 |  awk '{print substr($0,0,5)}'`
+f2_md5=`md5sum $2 |  awk '{print substr($0,0,5)}'`
+
+echo "$1 md5 $f1_md5"
+echo "$2 md5 $f2_md5"
+
+if [ "$1" -ne "${f1[3]}" ]; then
+	echo "$1; checksum mismatch."
+	exit 0
+fi
+
+if [ "$2" -ne "${f2[3]}" ]; then
+	echo "$2; checksum mismatch."
+	exit 0
+fi
+
+bwa mem -t 8 ../reference/ce10/ce10.fa ${1} ${2} | samtools view -b -S -h -  > ${BAM_DIR}${f1[3]}-${f2[3]}.tmp.bam
+
+
+## Replace Header & Sort Simultaneously!
+java	-jar	${PICARD}AddOrReplaceReadGroups.jar	\
+I=${BAM_DIR}${f1[3]}-${f2[3]}.tmp.bam	\
+O=${BAM_DIR}${f1[3]}-${f2[3]}.tmp.sorted.bam	\
+RGID=`basename ${bam_name}`	RGLB=${f1[1]}	\
+RGPL=ILLUMINA RGPU=${f1[1]} \
+RGSM=${f1[2]}	RGCN=BGI \
+SO=coordinate
+
+## Mark Duplicates
+java -jar ${PICARD}MarkDuplicates.jar \
+I=${BAM_DIR}${f1[3]}-${f2[3]}.tmp.sorted.bam \
+O=${bam_name} \
+M=${bam_name}.duplicate_report.txt \
+VALIDATION_STRINGENCY=SILENT \
+REMOVE_DUPLICATES=false
+
+# Remove temp
+rm ${BAM_DIR}${f1[3]}-${f2[3]}.tmp.bam ${BAM_DIR}${f1[3]}-${f2[3]}.tmp.sorted.bam
+
 
 # Index Bams
-samtools index $BAM_DIR`basename ${f1/_1.fq.gz/}`.bam
-samtools index ${BAM_DIR}`basename ${f1/.fq.gz/mem}`.bam
+samtools index $bam_name
 
