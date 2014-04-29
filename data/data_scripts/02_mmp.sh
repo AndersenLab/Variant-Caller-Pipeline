@@ -5,44 +5,28 @@ cd ../raw/mmp
 # Download Data from "The million mutation project: A new approach to genetics in Caenorhabditis elegans"
 wget 'http://genome.sfu.ca/mmp/mmp_wild_isolate_data_Mar13.txt'
 
-# Generate gff files for each strain
-cut -f 3 mmp_wild_isolate_data_Mar13.txt | sort | uniq > strains.txt
-
-egrep -v '(insertion|deletion|complex_change)' mmp_wild_isolate_data_Mar13.txt > mmp_snps.txt
-
 # Generate individual files for each strain (will be concatenated later)
 mkdir strains
 
-# Generate unique positions
-cut -f 4,5,6 mmp_snps.txt | sort | uniq | sed -e 's/^/chr/' > chr_pos.txt
+# Generate set of strains
+cut -f 3 mmp_wild_isolate_data_Mar13.txt | sort | uniq > strains.txt
 
-cat strains.txt | xargs -I {} -n 1 -P 5 sh -c "grep '{}' mmp_snps.txt | cut -f 4,5,6,7 | sed -e 's/^/chr/'  | sort -n -k 1,2 > strains/{}.txt"
+# Generate list of SNPs , filtering out indels & complex changes.
+egrep -v '(insertion|deletion|complex_change)' mmp_wild_isolate_data_Mar13.txt | awk -F $'\t' '{ print "CHROMOSOME_" $4 "\t" $3 "\t" $6 "/" $7 "\t" $5 "\t" $5+1 "\t0\t+\t" 0 "\t"}' |  tail -n +2  > mmp_snps.txt
 
-join -1 1 -2 2 AB1.txt AB3.txt
-
-# Get variants
-gunzip  -kfc 04_mmp_strains.txt.Q10.vcf.gz | vcf-to-tab > mmpQ10.txt
-
-# Convert file to a 'gff'
-echo "##fileformat=VCFv4.1" > mmp235.vcf
-echo -e "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\t`cat strains.txt`" >> mmp235.vcf                      
-
-awk -F $'\t' '{ print $4 "\t" $5 "\t.\T" $6 "\t" $7 "\t.\t.\t.\t" }'  <(tail +2 mmp_wild_isolate_data_Mar13.txt | head -n 50) >> mmp235.vcf
-=======
-head -n 200 mmp235.gff > mmp_test.gff
-
-# Convert file to a 'gff'
-awk -F $'\t' '{ print $4 "\t.\t.\t" $5 "\t" ($5+1) "\t.\t-\t" $1 }'  <(tail +2 mmp_wild_isolate_data_Mar13.txt) > mmp235.gff
+perl remap_gff_between_releases.pl --release1 235 --release2 220 --out out.test --gff mmp_snps.txt 
 
 
-# File needs to be in gff format.
+# Perform liftover
 
-# Download the necessary files for the conversion
-# Thanks to https://github.com/pruzanov/ME.scripts/blob/master/remap_gff/unmap_gff_between_releases.pl
+cd ../vcf/
 
-perl remap_gff_between_releases.pl -gff mmp235.gff -output mmp220.gff  -release1 195 -release2 235
+gunzip -kfc ../vcf/04_mmp_strains.txt.Q10.vcf.gz | vcf-to-tab > andersen_mmp_Q10.txt
 
-# Check if they are the same...
-md5 mmp220.gff
-md5 mmp235.gff
 
+##############
+# Plot stats #
+##############
+
+bcftools stats  -s - 02a_BGI2_rep1.txt.Q40.vcf.gz 02b_BGI2_rep2.txt.Q40.vcf.gz > rep1.txt
+plot-vcfstats -p rep1_rep2/ rep1.txt
