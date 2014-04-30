@@ -1,5 +1,5 @@
 !#/bin/bash
-# Use to extract info from a set of fastq's
+# This script can be used to extract information from fastqs.
 
 for r in `ls *.gz`; 
 do 
