@@ -1,8 +1,7 @@
 library(VariantAnnotation)
+library(ggplot2)
 
 args <- commandArgs(trailingOnly = TRUE)
-
-print(args)
 
 # A function for cleaning variable names; https://github.com/johnmyleswhite/ProjectTemplate/
 clean.variable.name <- function(variable.name)
@@ -23,12 +22,6 @@ clean.variable.name <- function(variable.name)
 #----------------------------#
 
 import_table <- function(t_name, tmp) { 
-
-args <- "test.txt.Q20.vcf.gz"
-
-print(args)
-
-import_table <- function(t_name) { 
   # This function can import data from bcftools stats function
   t <- read.csv2(pipe(sprintf("egrep '^(# )?%s[^,]' %s", t_name, tmp)), sep='\t',header=T, check.names=FALSE)
   names(t) <- lapply(names(t), function(x) gsub("\\[[1-9]+\\]","",x))
@@ -42,15 +35,11 @@ import_table <- function(t_name) {
 #--------------------------------------#
 
 load_stats <- function(vcf) {
-
-=======
-load_stats <- function(vcf) {
 # Loads the stats for a given vcf file
 tmp <-tempfile()[1]
 system(sprintf("bcftools stats %s > %s", vcf, tmp))
 
 # Import tables
-
 AF  <- import_table("AF", tmp)      # Stats by Non-Reference Allele
 SiS <- import_table("SiS", tmp)     # Singleton Stats
 ST  <- import_table("ST", tmp)      # Substitution Types
@@ -61,19 +50,6 @@ IDD <- import_table("IDD", tmp)     # InDel Distribution
 # Fix summary numbers
 SN <- as.list(tmp_SN[[3]])
 names(SN) <- clean.variable.name(tmp_SN[[2]])
-
-AF  <- import_table("AF")      # Stats by Non-Reference Allele
-SiS <- import_table("SiS")     # Singleton Stats
-ST  <- import_table("ST")      # Substitution Types
-tmp_SN  <- import_table("SN")      # Summary Numbers
-QUAL<- import_table("QUAL")    # Stats by Quality
-IDD <- import_table("IDD")     # InDel Distribution
-
-# Fix summary numbers
-SN <- as.list(tmp_SN[[3]])
-names(SN) <- tmp_SN[[2]]
-
-
 # Return list of results.
 list(AF=AF,SiS=SiS,ST=ST,SN=SN,QUAL=QUAL,IDD=IDD)
 }
@@ -87,8 +63,6 @@ load_vcfs <- function(search_string) {
   }
   r
 }
-
-r <- load_vcfs("04_mmp")
 
 # Function for pulling together variables from 'SN'
 pull_var <- function(r, col, var) {
@@ -110,6 +84,8 @@ pull_SiS_var <- function(r, var) {
 
 # Summary Stats
 
+r <- load_vcfs(args[1])
+print(getwd())
 # Number of Singletons
 x <- as.data.frame(
      cbind(Singletons=pull_var(r,"SiS","number of SNPs")))
@@ -117,9 +93,8 @@ x <- cbind(id=rownames(x), x)
 
 c <- ggplot(x, aes(x=id,y=Singletons)) +
     geom_bar(stat="identity") +
+    ggtitle(sprintf("%s", args[1] )) +
     stat_bin(geom="text", aes(label=Singletons, vjust=-1))
-c
 
-q <- load_stats('test.txt.Q40.vcf.gz')
-
+ggsave(file=sprintf("%s.png", args[2] ))
 
