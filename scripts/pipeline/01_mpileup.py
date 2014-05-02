@@ -42,10 +42,21 @@ os.system("cat ../ancillary/chr3ranges.txt")
 job_id = "1"
 
 
-outfile = os.path.basename(sys.argv[1]).replace('[','\[').replace(']','\]')
+outfile = os.path.basename(sys.argv[1])
+try:
+	options = os.path.basename(sys.argv[2])
+except:
+	options = []
 
 
-fasta_list = open("../ancillary/fasta_sets/" + outfile,'r').read().split('\n')
+# Depth
+#if options.find('d'):
+	# Calculate the average depth of the bam file.
+	#avg_depth = os.popen("samtools depth BGI2-RET4-QX1212-11d58-2bc7c.bam  | awk '{sum+=$3;cnt++}END{print sum/cnt}'")
+
+
+# Filter depth
+fasta_list = open("../ancillary/bam_sets/" + outfile,'r').read().split('\n')
 
 
 print "Job Id: %s" % job_id
@@ -69,6 +80,11 @@ os.system(com)
 os.system("cat ../ancillary/chr3ranges.txt | bcftools cat `ls -v ../vcf/raw.%s.*.bcf` | bcftools view - | vcf-sort > ../vcf/%s.vcf" % (outfile , outfile))
 #os.system("bcftools index ../vcf/%s.bcf > ../vcf/%s.bcf" % (outfile, outfile))
 
+# Process original file
+os.system("bgzip -f ../vcf/%s.vcf" % (outfile))
+os.system("tabix -f ../vcf/%s.vcf.gz" % (outfile))
+
+
 # Output in multiple qualities
 for quality in [10,20,30,40]:
 	os.system("vcfutils.pl varFilter -d 3 -Q %s ../vcf/%s.vcf > ../vcf/%s.Q%s.vcf" % (quality, outfile, outfile, quality))
@@ -79,6 +95,7 @@ for quality in [10,20,30,40]:
 # Remove temporary files
 os.system("rm -f ../vcf/raw.%s.*" % outfile)
 
+# Plot Results
 
 
 # Print total time
