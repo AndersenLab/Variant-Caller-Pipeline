@@ -1,4 +1,3 @@
-library(VariantAnnotation)
 library(ggplot2)
 
 args <- commandArgs(trailingOnly = TRUE)
@@ -35,23 +34,23 @@ import_table <- function(t_name, tmp) {
 #--------------------------------------#
 
 load_stats <- function(vcf) {
-# Loads the stats for a given vcf file
-tmp <-tempfile()[1]
-system(sprintf("bcftools stats %s > %s", vcf, tmp))
-
-# Import tables
-AF  <- import_table("AF", tmp)      # Stats by Non-Reference Allele
-SiS <- import_table("SiS", tmp)     # Singleton Stats
-ST  <- import_table("ST", tmp)      # Substitution Types
-tmp_SN  <- import_table("SN", tmp)  # Summary Numbers
-QUAL<- import_table("QUAL", tmp)    # Stats by Quality
-IDD <- import_table("IDD", tmp)     # InDel Distribution
-
-# Fix summary numbers
-SN <- as.list(tmp_SN[[3]])
-names(SN) <- clean.variable.name(tmp_SN[[2]])
-# Return list of results.
-list(AF=AF,SiS=SiS,ST=ST,SN=SN,QUAL=QUAL,IDD=IDD)
+  # Loads the stats for a given vcf file
+  tmp <-tempfile()[1]
+  system(sprintf("bcftools stats %s > %s", vcf, tmp))
+  
+  # Import tables
+  AF  <- import_table("AF", tmp)      # Stats by Non-Reference Allele
+  SiS <- import_table("SiS", tmp)     # Singleton Stats
+  ST  <- import_table("ST", tmp)      # Substitution Types
+  tmp_SN  <- import_table("SN", tmp)  # Summary Numbers
+  QUAL<- import_table("QUAL", tmp)    # Stats by Quality
+  IDD <- import_table("IDD", tmp)     # InDel Distribution
+  
+  # Fix summary numbers
+  SN <- as.list(tmp_SN[[3]])
+  names(SN) <- clean.variable.name(tmp_SN[[2]])
+  # Return list of results.
+  list(AF=AF,SiS=SiS,ST=ST,SN=SN,QUAL=QUAL,IDD=IDD)
 }
 
 
@@ -63,6 +62,7 @@ load_vcfs <- function(search_string) {
   }
   r
 }
+
 
 # Function for pulling together variables from 'SN'
 pull_var <- function(r, col, var) {
@@ -83,18 +83,17 @@ pull_SiS_var <- function(r, var) {
 #------#
 
 # Summary Stats
-
+setwd("../../data/vcf")
 r <- load_vcfs(args[1])
-print(getwd())
 # Number of Singletons
 x <- as.data.frame(
-     cbind(Singletons=pull_var(r,"SiS","number of SNPs")))
+  cbind(Singletons=pull_var(r,"SiS","number of SNPs")))
 x <- cbind(id=rownames(x), x)
 
 c <- ggplot(x, aes(x=id,y=Singletons)) +
-    geom_bar(stat="identity") +
-    ggtitle(sprintf("%s", args[1] )) +
-    stat_bin(geom="text", aes(label=Singletons, vjust=-1))
+  geom_bar(stat="identity") +
+  ggtitle(sprintf("%s", args[1] )) +
+  stat_bin(geom="text", aes(label=Singletons, vjust=-1))
 
-ggsave(file=sprintf("%s.png", args[2] ))
+ggsave(file=sprintf("../reports/quality/%s.png", args[1] ))
 
