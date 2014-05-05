@@ -8,6 +8,9 @@
 *.gff
 *.sam
 *.vcf
+*.gz
+*.tbi
+*.bcf
 
 #--------------------------#
 # Specific Files to Ignore #
