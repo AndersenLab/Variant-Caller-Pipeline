@@ -21,10 +21,9 @@ fastq_info <- group_by(fastq_info,run, library, strain, flowcell, lane) %.%
 d <- inner_join(fastq_info, bam_depth, by = 'bam')
 d <- rename(d,c("Library"="lib"))
 
-ggplot(data=d, aes(y=avg_depth,x=lib, order=-desc(lib))) +
-  geom_boxplot() +
-  coord_flip() +
-  facet_grid(Run ~ .) 
+d$lib <- as.factor(d$lib)
+d$run <- as.factor(d$Run)
 
-
-# Format Fastq info
+ggplot(data=d) +
+  geom_boxplot( aes(y=avg_depth,x=factor(lib), fill=Run), drop=F) +
+  scale_fill_brewer("RdGy",palette="Set4")
