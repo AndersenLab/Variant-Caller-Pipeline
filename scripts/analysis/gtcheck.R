@@ -1,4 +1,5 @@
 library(ggplot2)
+library(gridExtra)
 
 args <- commandArgs(trailingOnly = TRUE)
 
@@ -22,7 +23,7 @@ import_table <- function(t_name, f) {
 }
 
 # Generate concordance numbers
-concordance <- function(f1, f2) {
+bcf_results <- function(f1, f2) {
   # Create temporary file
   tmp <- tempfile()
   system(sprintf('bcftools gtcheck -s  %s %s > %s', f1, f2, tmp))
@@ -35,20 +36,71 @@ concordance <- function(f1, f2) {
   list(SM=SM,CN=CN)
 }
 
-results <- lapply(pairs, function(x) { concordance(x[1],x[2]) })
+#------------------#
+# Generate Results #
+#------------------#
+
+results <- lapply(pairs, function(x) { bcf_results(x[1],x[2]) })
+
+#-------------------#
+# Concordance Chart #
+#-------------------#
 
 # Generate Concordance dataframe
-c_frame <- do.call(rbind.data.frame,sapply(results, function(x) { x["SM"] }))
+SM_frame <- do.call(rbind.data.frame,sapply(results, function(x) { x["SM"] }))
 
 # Generate strain average for sorting.
-c_frame <- group_by(c_frame, Sample) %.% 
+SM_frame <- group_by(SM_frame, Sample) %.% 
   mutate(sample_avg_depth=mean(Average.Discordance.Number.of.sites)) %.%
   arrange(sample_avg_depth)
+
 # Plot concordance of multiple concordance results
-ggplot(c_frame) +
-    geom_line(position="identity",aes(y=as.numeric(Average.Discordance.Number.of.sites), x=reorder(c_frame$Sample, c_frame$sample_avg_depth), color=comparison, group=comparison)) +
+ggplot(SM_frame) +
+    geom_line(position="identity",aes(y=as.numeric(Average.Discordance.Number.of.sites), x=reorder(SM_frame$Sample, SM_frame$sample_avg_depth), color=comparison, group=comparison)) +
     labs(title="Average Discordance", x="Sample Name", y="Average Discordance (%)") +
-    scale_y_continuous(breaks=seq(0, 10, 0.1))
+    scale_y_continuous(breaks=seq(0, 10, 0.1)) +
+    theme(legend.position="top")
 
 ggsave(file=sprintf("../reports/quality/%s.png", args[1] ))
+
+#-------------------#
+# Concordance Chart #
+#-------------------#
+
+con_chart <- function(record) {
+  CN_set <- record$CN
+  SM_set <- record$SM
+  CN_set$Discordance <- runif(length(CN_set$Discordance))
+  ggplot(CN_set) +
+    geom_tile(aes(x=Sample.i, y=Sample.j, fill=Discordance),colour = "white") + 
+    geom_tile(aes(x=Sample.j, y=Sample.i, fill=Discordance),colour = "white") + 
+    geom_tile(data=SM_set, aes(x=Sample, y=Sample, fill= Average.Discordance.Number.of.sites)) +
+    labs(title=sprintf("%s",SM_set[1,'comparison'])) +
+    scale_fill_gradient(low = "white", high = "steelblue") +
+    theme(legend.position="bottom")
+}
+
+g_legend<-function(a.gplot){
+  tmp <- ggplot_gtable(ggplot_build(a.gplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)}
+
+legend <- g_legend(con_chart(results[[1]]))
+lwidth <- sum(legend$width)
+
+# Generate Concordance Charts and place them within a frame.
+png("concordance.png", width = 1200, height=round(length(pairs) / 2)*600, units = "px")
+=do.call(arrangeGrob, c(lapply(results, function(x) { con_chart(x) + theme(legend.position="none") }),
+                       legend, 
+                       ncol=2, 
+                       widths=unit.c(unit(1, "npc") - lwidth,
+                       lwidth))))=
+dev.off()
+
+grid.arrange(arrangeGrob(p1 + theme(legend.position="none"),
+                         p2 + theme(legend.position="none"),
+                         main ="this is a title",
+                         left = "This is my global Y-axis title"), legend, 
+             widths=unit.c(unit(1, "npc") - lwidth, lwidth), nrow=1)
 
