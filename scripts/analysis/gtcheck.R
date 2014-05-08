@@ -3,16 +3,15 @@ library(gridExtra)
 
 args <- commandArgs(trailingOnly = TRUE)
 
-
 args <- c("01a_mem_vs_aln_[mem].txt.vcf.gz","01a_mem_vs_aln_[mem].txt.vcf.gz","03a_BGI2_repeats_[set2].txt.vcf.gz")
 pairs <- list()
 for (i in 1:(length(args)-1)) {
   pairs<-append(pairs,list(c(args[i], args[i+1])))
 }
 
-#---------------------------#
-# Import data from bcfstats #
-#---------------------------#
+#------------------------------------------#
+# Define Functions for generating bcfstats #
+#------------------------------------------#
 
 # Pipe in gtcheck data from bcfstats
 import_table <- function(t_name, f) { 
@@ -51,24 +50,24 @@ pair_results <- function(f1, f2) {
   list(SM=SM,CN=CN)
 }
 
-#------------------#
-# Individual Stats #
-#------------------#
+#---------------#
+# Generate Data #
+#---------------#
 
-results <- lapply(args, function(x) { ind_results(x) } )
+ind_results <- lapply(args, function(x) { ind_results(x) } )
 
-#------------------#
-# Pairwise Stats   #
-#------------------#
+pair_results <- lapply(pairs, function(x) { pair_results(x[1],x[2]) })
 
-results <- lapply(pairs, function(x) { pair_results(x[1],x[2]) })
+#-----------------------------#
+# Plot Individual vcf results #
+#-----------------------------#
 
 #-------------------#
 # Concordance Chart #
 #-------------------#
 
 # Generate Concordance dataframe
-SM_frame <- do.call(rbind.data.frame,sapply(results, function(x) { x["SM"] }))
+SM_frame <- do.call(rbind.data.frame,sapply(pair_results, function(x) { x["SM"] }))
 
 # Generate strain average for sorting.
 SM_frame <- group_by(SM_frame, Sample) %.% 
