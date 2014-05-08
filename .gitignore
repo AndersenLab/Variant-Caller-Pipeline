@@ -13,7 +13,7 @@
 *.bcf
 *.RData
 *.RHistory
-*.numbers
+*.numbers/**
 
 #--------------------------#
 # Specific Files to Ignore #
