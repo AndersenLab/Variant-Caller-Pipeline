@@ -4,7 +4,7 @@ library(gridExtra)
 args <- commandArgs(trailingOnly = TRUE)
 
 
-args <- c("01a_mem_vs_aln_[mem].txt.vcf.gz","01b_mem_vs_aln_[aln].txt.vcf.gz","01a_mem_vs_aln_[mem].txt.vcf.gz","03a_BGI2_repeats_[set2].txt.vcf.gz")
+args <- c("01a_mem_vs_aln_[mem].txt.vcf.gz","01a_mem_vs_aln_[mem].txt.vcf.gz","03a_BGI2_repeats_[set2].txt.vcf.gz")
 pairs <- list()
 for (i in 1:(length(args)-1)) {
   pairs<-append(pairs,list(c(args[i], args[i+1])))
@@ -22,9 +22,24 @@ import_table <- function(t_name, f) {
   t[,c(-1)]
 }
 
+ind_results <- function(f) {
+  # This function retrieves individual data for each VCF for plotting and comparison.
+  tmp <- tempfile()
+  system(sprintf('bcftools stats -s -  %s > %s', f, tmp))
+  tmp_SN  <- import_table("SN", tmp)
+  QUAL <- import_table("QUAL", tmp)
+  PSC <- import_table("PSC", tmp)
+  
+  # Fix summary numbers
+  SN <- as.list(tmp_SN[[3]])
+  names(SN) <- make.names(tmp_SN[[2]])
+  
+  list(SN=SN, QUAL=QUAL, PSC=PSC)
+}
+
 # Generate concordance numbers
-bcf_results <- function(f1, f2) {
-  # Create temporary file
+pair_results <- function(f1, f2) {
+  # This function retrieves pairwise stats using bcftools for plotting and comparison.
   tmp <- tempfile()
   system(sprintf('bcftools gtcheck -s  %s %s > %s', f1, f2, tmp))
   SM <- import_table("SM", tmp)
@@ -37,10 +52,16 @@ bcf_results <- function(f1, f2) {
 }
 
 #------------------#
-# Generate Results #
+# Individual Stats #
 #------------------#
 
-results <- lapply(pairs, function(x) { bcf_results(x[1],x[2]) })
+results <- lapply(args, function(x) { ind_results(x) } )
+
+#------------------#
+# Pairwise Stats   #
+#------------------#
+
+results <- lapply(pairs, function(x) { pair_results(x[1],x[2]) })
 
 #-------------------#
 # Concordance Chart #
@@ -87,20 +108,8 @@ g_legend<-function(a.gplot){
   return(legend)}
 
 legend <- g_legend(con_chart(results[[1]]))
-lwidth <- sum(legend$width)
 
 # Generate Concordance Charts and place them within a frame.
 png("concordance.png", width = 1200, height=round(length(pairs) / 2)*600, units = "px")
-=do.call(arrangeGrob, c(lapply(results, function(x) { con_chart(x) + theme(legend.position="none") }),
-                       legend, 
-                       ncol=2, 
-                       widths=unit.c(unit(1, "npc") - lwidth,
-                       lwidth))))=
+do.call(grid.arrange, c(lapply(results, function(x) { con_chart(x)  }), ncol=2))
 dev.off()
-
-grid.arrange(arrangeGrob(p1 + theme(legend.position="none"),
-                         p2 + theme(legend.position="none"),
-                         main ="this is a title",
-                         left = "This is my global Y-axis title"), legend, 
-             widths=unit.c(unit(1, "npc") - lwidth, lwidth), nrow=1)
-

@@ -12,8 +12,10 @@ for r in `ls *.vcf`; do
 	bgzip $r
 	tabix $r.gz
 done
-# Combine vcfs
-vcf-merge `ls *.vcf.gz` > mmp.vcf
+# Combine vcfs; collapse variants.
+vcf-merge -c both `ls *.vcf.gz` > mmp.vcf
 
 # Remove extra files. Only keep mmp.vcf
-rm `find . -type f -not -name "mmp.vcf"`
+#rm `find . -type f -not -name "mmp.vcf"`
+bgzip mmp.vcf
+tabix mmp.vcf.gz
