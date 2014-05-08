@@ -11,6 +11,9 @@
 *.gz
 *.tbi
 *.bcf
+*.RData
+*.RHistory
+*.numbers
 
 #--------------------------#
 # Specific Files to Ignore #
