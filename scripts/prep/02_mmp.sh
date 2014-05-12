@@ -7,15 +7,25 @@ gunzip isolate_vcf.tar.gz
 tar -xf isolate_vcf.tar 
 rm isolate_vcf.tar
 
-# bgzip
+# Add ALT genotype column 1/1 to end; 
 for r in `ls *.vcf`; do
-	bgzip $r
-	tabix $r.gz
+    echo $r
+    STRAIN_NAME=${r%%\.*}
+    awk -v strain=$STRAIN_NAME '
+     $1 ~ "^\##" { print }
+     $1 ~ "^\#CHROM" { print $0 "\t" strain}
+     $1 !~ "^\#" { $3="."; $8="."; print $0 "\t1|1"}
+     ' $r > $STRAIN_NAME.fixed.vcf
+    bgzip -f $STRAIN_NAME.fixed.vcf
+    tabix $STRAIN_NAME.fixed.vcf.gz
 done
 # Combine vcfs; collapse variants.
-vcf-merge -c both `ls *.vcf.gz` > mmp.vcf
+vcf-merge -c both `ls *.fixed.vcf.gz` > mmp.vcf
 
-# Remove extra files. Only keep mmp.vcf
-#rm `find . -type f -not -name "mmp.vcf"`
+# Compres and Index.
 bgzip mmp.vcf
 tabix mmp.vcf.gz
+
+mv mmp.vcf.gz ../vcf/mmp.vcf.gz
+mv mmp.vcf.gz.tbi ../vcf/mmp.vcf.gz.tbi
+
