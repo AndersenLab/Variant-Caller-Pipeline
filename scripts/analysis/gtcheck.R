@@ -6,15 +6,15 @@ setwd("~/Documents/Spring Rotation/Variant-Caller-Pipeline/data/vcf/")
 
 args <- commandArgs(trailingOnly = TRUE)
 
-args <- c("03_RET7.txt.Q10.vcf.gz","03_RET7.txt.Q20.vcf.gz","03_RET7.txt.Q30.vcf.gz","03_RET7.txt.Q40.vcf.gz")
+args <- c("03_RET7.txt.Q40.vcf.gz","03_RET7a.txt.Q40.vcf.gz","03_RET7a.txt.Q40.vcf.gz","03_RET7.txt.Q40.vcf.gz")
 pairs <- list()
 for (i in 1:(length(args)-1)) {
   pairs<-append(pairs,list(c(args[i], args[i+1])))
 }
 
-#------------------------------------------#
-# Define Functions for generating bcfstats #
-#------------------------------------------#
+#---------------------------------------#
+# Define Functions for generating stats #
+#---------------------------------------#
 
 # Function used for plotting later.
 number_ticks <- function(n) {function(limits) pretty(limits, n)}
@@ -22,12 +22,12 @@ number_ticks <- function(n) {function(limits) pretty(limits, n)}
 # Pipe in gtcheck data from bcfstats
 import_table <- function(t_name, f) { 
   # This function can import data from bcftools stats function
-  t <- read.csv2(pipe(sprintf("egrep '^(# \\[1\\])?%s[^,]' %s", t_name, f)), as.is=T, sep='\t',header=T, check.names=FALSE)
+  t <- read.csv2(pipe(sprintf("egrep '^(# )%s[^,]|^%s' %s", t_name, t_name, f)), as.is=T, sep='\t',header=T, check.names=FALSE)
   names(t) <- lapply(names(t), function(x) make.names(gsub("\\[[1-9]+\\]","",x)))
   t[,c(-1)]
 }
 
-# Generate a concordance Matrix!
+# Generate a concordance Matrix
 get_con_matrix <- function(f1, f2) {
   tmp <- tempfile()
   # Get sample names from each file
@@ -37,44 +37,47 @@ get_con_matrix <- function(f1, f2) {
   joint_samples <- intersect(f1_samples, f2_samples)
   # Retrieve Concordance Data
   r <- read.csv2(pipe(sprintf("echo %s | xargs -I {} -n 1 -P 50 sh -c \"bcftools gtcheck -S {} -g %s %s | sed \'s/$/\t{}/\'\" | egrep -v '#' ", paste0(joint_samples, collapse=" "), f1, f2)), as.is=T, sep='\t',header=F, col.names= c("Concordance", "Uncertainty", "Average Depth", "Number of Sites", "Sample", "Query"))
-  r$comparison <- sprintf('000%s__%s.txt', sub(".txt","",sub(".vcf.gz","",f1)), sub(".txt","",sub(".vcf.gz","",f2)))
+  r$Comparison <- sprintf('%s__%s.txt', sub(".txt","",sub(".vcf.gz","",f1)), sub(".txt","",sub(".vcf.gz","",f2)))
   r
 }
 
-get_ind_results <- function(f) {
+get_pair_results <- function(f1, f2) {
   # This function retrieves individual data for each VCF for plotting and comparison.
-  tmp <- tempfile()
-  system(sprintf('bcftools stats -c both -s -  %s > %s', f, tmp))
-  tmp_SN  <- import_table("SN", tmp)
+  tmp <- 'tmp.txt'
+  system(sprintf('bcftools stats -c both -s -  %s %s > %s', f1, f2, tmp))
+  SN  <- import_table("SN", tmp)
   QUAL <- import_table("QUAL", tmp)
   PSC <- import_table("PSC", tmp)
   
-  # Fix summary numbers
-  SN <- as.list(tmp_SN[[3]])
-  names(SN) <- make.names(tmp_SN[[2]])
-  print(SN)
+  comp <- sprintf('%s__%s.txt', sub(".txt","",sub(".vcf.gz","",f1)), sub(".txt","",sub(".vcf.gz","",f2)))
+  id_repl <- list('0'=f1, '1'=f2, '2'=comp)
+  
+  # Replace ID Field as is appropriate
+  SN$id <- id_repl[as.character(SN$id)]
+  SN$key <- tolower(SN$key)
+  QUAL$id <- id_repl[as.character(QUAL$id)]
+  PSC$id <- id_repl[as.character(PSC$id)]
+  
+  # Fix SN Group
+  SN <- reshape(SN, direction="wide", timevar="key", ids="id")
+  names(SN) <- make.names(gsub("value.","",gsub(":","", names(SN))))
+  
+  # Add Comparison Column
+  SN$Comparison <- comp
+  QUAL$Comparison <- comp
+  PSC$Comparison <- comp
+    
   list(SN=SN, QUAL=QUAL, PSC=PSC)
 }
 
-# Generate concordance numbers
-get_pair_results <- function(f1, f2) {
-  # This function retrieves pairwise stats using bcftools for plotting and comparison.
-  tmp <- sprintf('000%s__%s.txt', sub(".txt","",sub(".vcf.gz","",f1)), sub(".txt","",sub(".vcf.gz","",f2)))
-  system(sprintf('bcftools gtcheck  -G -g %s %s > %s', f1, f2, tmp))
-  SM <- import_table("SM", tmp)
-  CN <- import_table("CN", tmp)
-  SM$comparison <- sprintf('%s__%s', sub(".txt","",sub(".vcf.gz","",f1)), sub(".txt","",sub(".vcf.gz","",f2)))
-  
-  SM$Average.Discordance.Number.of.sites <- as.numeric(SM$Average.Discordance.Number.of.sites)*100
-  
-  list(SM=SM,CN=CN)
-}
+
+f<-reshape(SN, direction="wide", timevar="key", ids="id")
+
+s <- melt(SN, id.vars="id")
 
 #---------------#
 # Generate Data #
 #---------------#
-
-ind_results <- lapply(args, function(x) { get_ind_results(x) } )
 
 pair_results <- lapply(pairs, function(x) { get_pair_results(x[1],x[2]) })
 
@@ -105,30 +108,30 @@ plots <- lapply(names(p_list), function(x) {
   
 })
 
-#-------------------#
-# Concordance Chart #
-#-------------------#
+#-------------------------#
+# Ind. Sample Concordance #
+#-------------------------#
 
-# Generate Concordance dataframe
-SM_frame <- do.call(rbind.data.frame,sapply(pair_results, function(x) { x["SM"] }))
+con_comb <- do.call("rbind", concordance_results)
+con_comb$Concordance <- as.numeric(con_comb$Concordance)
 
-# Generate strain average for sorting.
-SM_frame <- group_by(SM_frame, Sample) %.% 
-  mutate(sample_avg_depth=mean(Average.Discordance.Number.of.sites)) %.%
-  arrange(sample_avg_depth)
+con_comb <- filter(con_comb, Query == Sample) %.%
+  group_by(Comparison) %.% 
+  mutate(sample_avg_conc=mean(Concordance)) %.%
+  arrange(sample_avg_conc)
+
 
 # Plot concordance of multiple concordance results
-ggplot(SM_frame) +
-    geom_line(position="identity",aes(y=Average.Discordance.Number.of.sites, x=reorder(SM_frame$Sample,sample_avg_depth) , color=comparison, group=comparison)) +
+ggplot(con_comb) +
+    geom_line(position="identity",aes(y=Concordance, x=con_comb$Sample , color=Comparison, group=Comparison)) +
     labs(title="Average Discordance", x="Sample Name", y="Average Discordance (%)") +
-    theme(legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1)) +
-    scale_y_continuous(breaks = seq(0,100,10))
+    theme(legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1))
 
 ggsave(file=sprintf("../reports/quality/%s.png", args[1] ))
 
-#-------------------#
-# Concordance Chart #
-#-------------------#
+#----------------------------#
+# Pairwise Concordance Chart #
+#----------------------------#
 
 con_chart <- function(record) {
   # Fix data types
@@ -138,7 +141,7 @@ con_chart <- function(record) {
     geom_tile(data=record, aes(x=Query, y=Sample, fill=Concordance), colour = "white") + 
     geom_tile(data=record, aes(x=Query, y=Sample, fill=Concordance), colour = "white") + 
     #geom_tile(data=SM_set, aes(x=Sample, y=Sample, fill=Average.Discordance.Number.of.sites), colour = "white") +
-    #labs(title=sprintf("%s",SM_set[1,'comparison'])) +
+    labs(title=sprintf("%s",record[1,'Comparison'])) +
     scale_fill_gradient(low="white", high="red", space="Lab") +
     theme(legend.position="bottom", legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1))
 }
