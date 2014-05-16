@@ -1,25 +1,24 @@
+VCF Compare Script
+==================
+
+```{r load_initial_data, echo=FALSE}
 library(ggplot2)
-library(gridExtra)
+library(gridExtra, quietly=T)
 library(scales)
-library(pander)
 
-
-setwd("~/Documents/Spring Rotation/Variant-Caller-Pipeline/data/vcf/")
-
+opts_knit$set(root.dir ="~/Documents/Spring Rotation/Variant-Caller-Pipeline/data/vcf/")
 args <- commandArgs(trailingOnly = TRUE)
 
-args <- c("03_RET7.txt.Q40.vcf.gz","03_RET7a.txt.Q40.vcf.gz","03_RET7a.txt.Q40.vcf.gz","03_RET7.txt.Q40.vcf.gz")
+args <- c("03_RET7a.txt.Q40.vcf.gz","03_RET7.txt.Q40.vcf.gz","03_RET7b.txt.Q40.vcf.gz")
 pairs <- list()
 for (i in 1:(length(args)-1)) {
   pairs<-append(pairs,list(c(args[i], args[i+1])))
 }
+```
 
 
-#---------------------------------------#
-# Define Functions for generating stats #
-#---------------------------------------#
-
-# Function used for plotting later.
+```{r def_functions, echo=FALSE}
+# Define Functions for generating stats
 number_ticks <- function(n) {function(limits) pretty(limits, n)}
 
 # Pipe in gtcheck data from bcfstats
@@ -46,7 +45,7 @@ get_con_matrix <- function(f1, f2) {
 
 get_pair_results <- function(f1, f2) {
   # This function retrieves individual data for each VCF for plotting and comparison.
-  tmp <- 'tmp.txt'
+  tmp <- tempfile()
   system(sprintf('bcftools stats -c both -s -  %s %s > %s', f1, f2, tmp))
   SN  <- import_table("SN", tmp)
   QUAL <- import_table("QUAL", tmp)
@@ -70,6 +69,8 @@ get_pair_results <- function(f1, f2) {
   id_rev[unlist(id_repl)] <- names(id_repl)
   SN$orig_id <- as.character(id_rev[as.character(SN$id)])
   
+  # Set SNP counts to actual, instead of subtraction
+  #SN$orig_id <- SN$orig_id[]
   
   # Add Comparison Column
   SN$Comparison <- comp
@@ -78,32 +79,17 @@ get_pair_results <- function(f1, f2) {
     
   list(SN=SN, QUAL=QUAL, PSC=PSC)
 }
+```
 
+```{r, echo=FALSE}
 
-
-#---------------#
-# Generate Data #
-#---------------#
-
+# Generate Data
 pair_results <- lapply(pairs, function(x) { get_pair_results(x[1],x[2]) })
-
 concordance_results <- lapply(pairs, function(x) { get_con_matrix(x[1],x[2]) })
 
-#-----------------#
-#                 #
-# Initiate Report #
-#                 #
-#-----------------#
+```
 
-# Generate Report
-rr <- Pandoc$new()
-rr$author <- args
-rr$title <- "VCF Comparison"
-
-
-rr$export(open = T)
-
-
+```{r ind_reports, echo=FALSE}
 #-----------------------------------------------#
 # Plot Individual vcf results for SNPs + Indels #
 #-----------------------------------------------#
@@ -112,8 +98,8 @@ rr$export(open = T)
 snp_indel <- do.call(rbind.data.frame,sapply(pair_results, function(x) { x["SN"] }))
 # Remove duplicates
 snp_indel <- as.data.frame(snp_indel[!duplicated(snp_indel$id),])
-snp_indel[snp_indel$orig_id == "NULL", "orig_id"] <- "Single"
-snp_indel[snp_indel$orig_id == 2, "orig_id"] <- "Comparison"
+snp_indel[snp_indel$orig_id == "NULL", "orig_id"] <- "Unique (within comparison)"
+snp_indel[snp_indel$orig_id == 2, "orig_id"] <- "Union"
 
 
 p_list = list(SNPs="number.of.snps",
@@ -123,19 +109,26 @@ p_list = list(SNPs="number.of.snps",
 
 plots <- lapply(names(p_list), function(i) {
   ggplot(snp_indel) + 
-    geom_bar(stat="identity", aes_string(x="id", y=p_list[[i]], fill="orig_id")) +
+    geom_bar(stat="identity", aes_string(x="id", y=p_list[[i]])) +
     geom_text( aes_string(x="id",y=p_list[[i]], label=p_list[[i]], vjust=-1)) +
     theme(legend.position="bottom", legend.title=element_blank()) +
     labs(y=i, x="Call Set",title=i) +
-    scale_y_continuous(breaks=number_ticks(10), labels=scientific_format())
+    scale_y_continuous(breaks=number_ticks(10), labels=scientific_format()) + 
+    facet_grid(.~ orig_id, space = "free", scales="free", drop=T )
 })
+```
 
-rr$add(plots[[1]])
+# Individual VCF Results
+```{r, results='asis', echo=F}
 
+plots[[1]]
+plots[[2]]
+plots[[3]]
+plots[[4]]
+```
 
-#-------------------------#
+```{r PSC, results="asis", echo=F}
 # Plot SNP data by Strain #
-#-------------------------#
 
 PSC_data <- do.call(rbind.data.frame,sapply(pair_results, function(x) { x["PSC"] }))
 
@@ -147,6 +140,9 @@ PSC_data <- mutate(PSC_data, total_snps = nRefHom + nNonRefHom + nHets) %.%
 ggplot(PSC_data) + 
     geom_line(aes(x=sample, y= nonRef_snps, group=id, color=id)) +
     facet(id ~ .)
+
+
+```
 
 #-------------------------#
 # Ind. Sample Concordance #
@@ -192,5 +188,3 @@ png("concordance.png", width = 1200, height=round(length(pairs) / 2)*600, units 
 do.call(grid.arrange, c(lapply(concordance_results, function(x) { con_chart(x)  }), ncol=2))
 dev.off()
 
-
-rr$export(open = T)
