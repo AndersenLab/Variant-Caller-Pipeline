@@ -43,6 +43,7 @@ get_con_matrix <- function(f1, f2) {
   r
 }
 
+
 get_pair_results <- function(f1, f2) {
   # This function retrieves individual data for each VCF for plotting and comparison.
   tmp <- tempfile()
@@ -55,8 +56,6 @@ get_pair_results <- function(f1, f2) {
   id_repl <- list('0'=f1, '1'=f2, '2'=comp)
   
   # Replace ID Field as is appropriate
-
-  SN$id <- gsub(".vcf.gz","",gsub(".txt", "", as.character(id_repl[as.character(SN$id)])))
   SN$key <- tolower(SN$key)
   QUAL$id <- as.character(id_repl[as.character(QUAL$id)])
   PSC$id <- as.character(id_repl[as.character(PSC$id)])
@@ -65,12 +64,16 @@ get_pair_results <- function(f1, f2) {
   SN <- reshape(SN, direction="wide", timevar=c("key"), ids=c("id"))
   names(SN) <- make.names(gsub("value.","",gsub(":","", names(SN))))
   
-  id_rev <- list()
-  id_rev[unlist(id_repl)] <- names(id_repl)
-  SN$orig_id <- as.character(id_rev[as.character(SN$id)])
+  # Cleanup Names
+  SN$name <- gsub(".vcf.gz","",gsub(".txt", "", as.character(id_repl[as.character(SN$id)])))
   
-  # Set SNP counts to actual, instead of subtraction
-  #SN$orig_id <- SN$orig_id[]
+  # Add union to subtraction (e.g. 2+1->1; 0+2->0); SNP counts don't represent subtraction - instead
+  # show them as actual counts.
+  SN_vars = c("number.of.snps", "number.of.mnps", "number.of.indels", "number.of.others")
+  for (i in SN_vars) {
+    SN[SN$id==0,i] <- sum(SN[SN$id==0 | SN$id == 2, i]) # First VCF
+    SN[SN$id==1,i] <- sum(SN[SN$id==1 | SN$id == 2, i]) # Second VCF
+  }
   
   # Add Comparison Column
   SN$Comparison <- comp
@@ -96,10 +99,7 @@ concordance_results <- lapply(pairs, function(x) { get_con_matrix(x[1],x[2]) })
 
 # Bring together total SNP counts
 snp_indel <- do.call(rbind.data.frame,sapply(pair_results, function(x) { x["SN"] }))
-# Remove duplicates
-snp_indel <- as.data.frame(snp_indel[!duplicated(snp_indel$id),])
-snp_indel[snp_indel$orig_id == "NULL", "orig_id"] <- "Unique (within comparison)"
-snp_indel[snp_indel$orig_id == 2, "orig_id"] <- "Union"
+
 
 
 p_list = list(SNPs="number.of.snps",
@@ -109,18 +109,17 @@ p_list = list(SNPs="number.of.snps",
 
 plots <- lapply(names(p_list), function(i) {
   ggplot(snp_indel) + 
-    geom_bar(stat="identity", aes_string(x="id", y=p_list[[i]])) +
-    geom_text( aes_string(x="id",y=p_list[[i]], label=p_list[[i]], vjust=-1)) +
+    geom_bar(stat="identity", aes_string(x="name", y=p_list[[i]])) +
+    geom_text( aes_string(x="name",y=p_list[[i]], label=p_list[[i]], vjust=-1)) +
     theme(legend.position="bottom", legend.title=element_blank()) +
     labs(y=i, x="Call Set",title=i) +
     scale_y_continuous(breaks=number_ticks(10), labels=scientific_format()) + 
-    facet_grid(.~ orig_id, space = "free", scales="free", drop=T )
+    facet_grid(. ~ Comparison, space = "free", scales="free", drop=T )
 })
 ```
 
 # Individual VCF Results
 ```{r, results='asis', echo=F}
-
 plots[[1]]
 plots[[2]]
 plots[[3]]
