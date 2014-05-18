@@ -113,7 +113,7 @@ get_pair_results <- function(f1, f2) {
 ```
 
 ```{r global_options, include=FALSE}
-opts_chunk$set(fig.width=12, fig.height=8, fig.path=paste0('../reports/',paste0(repl_multiple(args, replace_words),collapse="_"),"/"),
+opts_chunk$set(fig.width=12, fig.height=8, fig.path=paste0('../../data/reports/',paste0(repl_multiple(args, replace_words),collapse="_"),"/"),
                echo=FALSE, warning=FALSE, message=FALSE)
 ```
 
