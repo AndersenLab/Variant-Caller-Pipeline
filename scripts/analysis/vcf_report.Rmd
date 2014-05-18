@@ -1,3 +1,5 @@
+#/usr/bin/R
+
 VCF Compare Script
 ==================
 
@@ -5,17 +7,30 @@ VCF Compare Script
 library(ggplot2)
 library(gridExtra, quietly=T)
 library(scales)
+library(knitr)
 
-opts_knit$set(root.dir ="~/Documents/Spring Rotation/Variant-Caller-Pipeline/data/vcf/")
-args <- commandArgs(trailingOnly = TRUE)
 
-args <- c("03_RET7a.txt.Q40.vcf.gz","03_RET7.txt.Q40.vcf.gz","03_RET7b.txt.Q40.vcf.gz")
+dir <- "/Users/daniel/Documents/git/Variant-Caller-Pipeline/data/vcf/"
+
+opts_knit$set(root.dir =dir)
+setwd(dir)
+args <- sprintf("%s", commandArgs(trailingOnly = TRUE))
+
+
+
+#args <- sprintf("../../data/vcf/%s", c("03_RET1b.txt.Q40.vcf.gz","03_RET1.txt.Q40.vcf.gz","03_RET1a.txt.Q40.vcf.gz"))
+
 pairs <- list()
 for (i in 1:(length(args)-1)) {
   pairs<-append(pairs,list(c(args[i], args[i+1])))
 }
 ```
 
+## Files
+
+```{r, echo=FALSE, results="asis"}
+print(args)
+```
 
 ```{r def_functions, echo=FALSE}
 # Define Functions for generating stats
@@ -38,8 +53,8 @@ get_con_matrix <- function(f1, f2) {
   # Get intersection of samples
   joint_samples <- intersect(f1_samples, f2_samples)
   # Retrieve Concordance Data
-  r <- read.csv2(pipe(sprintf("echo %s | xargs -I {} -n 1 -P 50 sh -c \"bcftools gtcheck -S {} -g %s %s | sed \'s/$/\t{}/\'\" | egrep -v '#' ", paste0(joint_samples, collapse=" "), f1, f2)), as.is=T, sep='\t',header=F, col.names= c("Concordance", "Uncertainty", "Average Depth", "Number of Sites", "Sample", "Query"))
-  r$Comparison <- sprintf('%s__%s', sub(".txt","",sub(".vcf.gz","",f1)), sub(".txt","",sub(".vcf.gz","",f2)))
+  r <- read.csv2(pipe(sprintf("echo %s | xargs -I {} -n 1 -P 6 sh -c \"bcftools gtcheck -S {} -g %s %s | sed \'s/$/\t{}/\'\" | egrep -v '#' ", paste0(joint_samples, collapse=" "), f1, f2)), as.is=T, sep='\t',header=F, col.names= c("Concordance", "Uncertainty", "Average Depth", "Number of Sites", "Sample", "Query"))
+  r$Comparison <- sprintf('%s__%s', repl_multiple(f1, replace_words), repl_multiple(f2, replace_words))
   r
 }
 
@@ -47,12 +62,14 @@ get_con_matrix <- function(f1, f2) {
 get_pair_results <- function(f1, f2) {
   # This function retrieves individual data for each VCF for plotting and comparison.
   tmp <- tempfile()
+  sprintf('bcftools stats -c both -s -  %s %s > %s', f1, f2, tmp)
   system(sprintf('bcftools stats -c both -s -  %s %s > %s', f1, f2, tmp))
   SN  <- import_table("SN", tmp)
   QUAL <- import_table("QUAL", tmp)
   PSC <- import_table("PSC", tmp)
   
-  comp <- sprintf('%s__%s', sub(".txt","",sub(".vcf.gz","",f1)), sub(".txt","",sub(".vcf.gz","",f2)))
+                      
+  comp <- sprintf('%s__%s', repl_multiple(f1,replace_words), repl_multiple(f2,replace_words))
   id_repl <- list('0'=f1, '1'=f2, '2'=comp)
   
   # Replace ID Field as is appropriate
@@ -65,11 +82,11 @@ get_pair_results <- function(f1, f2) {
   names(SN) <- make.names(gsub("value.","",gsub(":","", names(SN))))
   
   # Cleanup Names
-  SN$name <- gsub(".vcf.gz","",gsub(".txt", "", as.character(id_repl[as.character(SN$id)])))
+  SN$name <- repl_multiple(as.character(id_repl[as.character(SN$id)]), replace_words)
   
   # Add union to subtraction (e.g. 2+1->1; 0+2->0); SNP counts don't represent subtraction - instead
   # show them as actual counts.
-  SN_vars = c("number.of.snps", "number.of.mnps", "number.of.indels", "number.of.others")
+  SN_vars = c("number.of.snps", "number.of.mnps", "number.of.indels", "number.of.others", "number.of.multiallelic.sites","number.of.multiallelic.snp.sites")
   for (i in SN_vars) {
     SN[SN$id==0,i] <- sum(SN[SN$id==0 | SN$id == 2, i]) # First VCF
     SN[SN$id==1,i] <- sum(SN[SN$id==1 | SN$id == 2, i]) # Second VCF
@@ -82,6 +99,22 @@ get_pair_results <- function(f1, f2) {
     
   list(SN=SN, QUAL=QUAL, PSC=PSC)
 }
+
+  replace_words = c(".vcf.gz",".txt", "../../data/vcf/")
+
+  repl_multiple <- function(string, replacements) {
+    # Convenience Function for replaceing multiple string with nothing.
+    for (rep in replacements) {
+      string <- sub(rep, "", string)
+    }
+    string
+  }
+
+```
+
+```{r global_options, include=FALSE}
+opts_chunk$set(fig.width=12, fig.height=8, fig.path=paste0('../reports/',paste0(repl_multiple(args, replace_words),collapse="_"),"/"),
+               echo=FALSE, warning=FALSE, message=FALSE)
 ```
 
 ```{r, echo=FALSE}
@@ -100,8 +133,6 @@ concordance_results <- lapply(pairs, function(x) { get_con_matrix(x[1],x[2]) })
 # Bring together total SNP counts
 snp_indel <- do.call(rbind.data.frame,sapply(pair_results, function(x) { x["SN"] }))
 
-
-
 p_list = list(SNPs="number.of.snps",
               Indels="number.of.indels",
               Number_Of_MultiAllelic_sites="number.of.multiallelic.sites",
@@ -114,19 +145,20 @@ plots <- lapply(names(p_list), function(i) {
     theme(legend.position="bottom", legend.title=element_blank()) +
     labs(y=i, x="Call Set",title=i) +
     scale_y_continuous(breaks=number_ticks(10), labels=scientific_format()) + 
-    facet_grid(. ~ Comparison, space = "free", scales="free", drop=T )
+    facet_grid(. ~ Comparison, space = "free", scales="free", drop=T ) +
+    theme(legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1))
 })
 ```
 
-# Individual VCF Results
-```{r, results='asis', echo=F}
+## Individual VCF Results
+```{r, results='asis', echo=FALSE}
 plots[[1]]
 plots[[2]]
 plots[[3]]
 plots[[4]]
 ```
 
-```{r PSC, results="asis", echo=F}
+```{r PSC, results="asis", echo=FALSE}
 # Plot SNP data by Strain #
 
 PSC_data <- do.call(rbind.data.frame,sapply(pair_results, function(x) { x["PSC"] }))
@@ -137,40 +169,53 @@ PSC_data <- mutate(PSC_data, total_snps = nRefHom + nNonRefHom + nHets) %.%
 
 # Total SNPs
 ggplot(PSC_data) + 
+    geom_point(aes(x=sample, y= nonRef_snps, group=id, color=id)) +
     geom_line(aes(x=sample, y= nonRef_snps, group=id, color=id)) +
-    facet(id ~ .)
+    labs(title="SNP count/file", x="Strain Name", y="non-reference Allele") +
+    theme(legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1))
 
+# Singletons
+ggplot(PSC_data) + 
+    geom_line(aes(x=sample, y=nSingletons, group=id, color=id)) +
+    geom_point(aes(x=sample, y=nSingletons, group=id, color=id)) +
+    labs(title="SNP count/file", x="Strain Name", y="non-reference Allele") +
+    theme(legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1))
 
 ```
 
-#-------------------------#
-# Ind. Sample Concordance #
-#-------------------------#
+## Ind. Sample Concordance #
 
+```{r ind_conc, results="asis", echo=FALSE}
 con_comb <- do.call("rbind", concordance_results)
 con_comb$Concordance <- as.numeric(con_comb$Concordance)
 
 con_comb <- filter(con_comb, Query == Sample) %.%
   group_by(Comparison) %.% 
   mutate(sample_avg_conc=mean(Concordance)) %.%
-  arrange(sample_avg_conc)
+  ungroup() %.%
+  group_by(Sample) %.%
+  mutate(sample_count=length(Sample)) %.%
+  arrange(Comparison)
 
 
 # Plot concordance of multiple concordance results
 ggplot(con_comb) +
-    geom_line(position="identity",aes(y=Concordance, x=con_comb$Sample , color=Comparison, group=Comparison)) +
+    geom_line(position="identity",aes(y=Concordance, x=con_comb$Sample , color=Comparison, group=Comparison)) + 
+    geom_point(position="identity",aes(y=Concordance, x=con_comb$Sample , color=Comparison, group=Comparison)) +
     labs(title="Average Discordance", x="Sample Name", y="Average Discordance (%)") +
     theme(legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1))
 
-ggsave(file=sprintf("../reports/quality/%s.png", args[1] ))
+```
 
-#----------------------------#
-# Pairwise Concordance Chart #
-#----------------------------#
+## Pairwise Concordance
 
+```{r pairwise_con, results="asis", echo=FALSE}
 con_chart <- function(record) {
   # Fix data types
   record$Concordance <- as.numeric(record$Concordance)
+  
+  # Restrict to strains in common.
+  record <- filter(record, Query %in% Sample & Sample %in% Query)
   
   ggplot() +
     geom_tile(data=record, aes(x=Query, y=Sample, fill=Concordance), colour = "white") + 
@@ -181,9 +226,6 @@ con_chart <- function(record) {
     theme(legend.position="bottom", legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1))
 }
 
-
-# Generate Concordance Charts and place them within a frame.
-png("concordance.png", width = 1200, height=round(length(pairs) / 2)*600, units = "px")
-do.call(grid.arrange, c(lapply(concordance_results, function(x) { con_chart(x)  }), ncol=2))
-dev.off()
-
+#Plot
+lapply(concordance_results, function(x) { con_chart(x)  })
+```
