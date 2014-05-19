@@ -13,7 +13,7 @@
 *.bcf
 *.RData
 *.RHistory
-*.numbers/**
+docs/Manifest.numbers/*
 
 #--------------------------#
 # Specific Files to Ignore #
