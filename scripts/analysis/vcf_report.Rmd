@@ -10,15 +10,12 @@ library(scales)
 library(knitr)
 
 
-dir <- "/Users/daniel/Documents/git/Variant-Caller-Pipeline/data/vcf/"
+dir <- "/Users/dancook/Documents/Spring Rotation/Variant-Caller-Pipeline/data/vcf/"
 
 opts_knit$set(root.dir =dir)
 setwd(dir)
 args <- sprintf("%s", commandArgs(trailingOnly = TRUE))
 
-
-
-#args <- sprintf("../../data/vcf/%s", c("03_RET1b.txt.Q40.vcf.gz","03_RET1.txt.Q40.vcf.gz","03_RET1a.txt.Q40.vcf.gz"))
 
 pairs <- list()
 for (i in 1:(length(args)-1)) {
@@ -51,9 +48,9 @@ get_con_matrix <- function(f1, f2) {
   f1_samples <- unlist(str_split(system(sprintf("bcftools view -h %s| grep '#CHROM' | cut -f '10-'",f1), intern=T),'\t'))
   f2_samples <- unlist(str_split(system(sprintf("bcftools view -h %s| grep '#CHROM' | cut -f '10-'",f2), intern=T),'\t'))
   # Get intersection of samples
-  joint_samples <- intersect(f1_samples, f2_samples)
+  joint_samples <- union(f1_samples, f2_samples)
   # Retrieve Concordance Data
-  r <- read.csv2(pipe(sprintf("echo %s | xargs -I {} -n 1 -P 6 sh -c \"bcftools gtcheck -S {} -g %s %s | sed \'s/$/\t{}/\'\" | egrep -v '#' ", paste0(joint_samples, collapse=" "), f1, f2)), as.is=T, sep='\t',header=F, col.names= c("Concordance", "Uncertainty", "Average Depth", "Number of Sites", "Sample", "Query"))
+  r <- read.csv2(pipe(sprintf("echo %s | xargs -I {} -n 1 -P 25 sh -c \"bcftools gtcheck -S {} -g %s %s | sed \'s/$/\t{}/\'\" | egrep -v '#' ", paste0(joint_samples, collapse=" "), f1, f2)), as.is=T, sep='\t',header=F, col.names= c("Concordance", "Uncertainty", "Average Depth", "Number of Sites", "Sample", "Query"))
   r$Comparison <- sprintf('%s__%s', repl_multiple(f1, replace_words), repl_multiple(f2, replace_words))
   r
 }
@@ -215,17 +212,20 @@ con_chart <- function(record) {
   record$Concordance <- as.numeric(record$Concordance)
   
   # Restrict to strains in common.
-  record <- filter(record, Query %in% Sample & Sample %in% Query)
+  #record <- filter(record, Query %in% Sample & Sample %in% Query)
   
   ggplot() +
     geom_tile(data=record, aes(x=Query, y=Sample, fill=Concordance), colour = "white") + 
     geom_tile(data=record, aes(x=Query, y=Sample, fill=Concordance), colour = "white") + 
     #geom_tile(data=SM_set, aes(x=Sample, y=Sample, fill=Average.Discordance.Number.of.sites), colour = "white") +
     labs(title=sprintf("%s",record[1,'Comparison'])) +
-    scale_fill_gradient(low="white", high="red", space="Lab") +
+    scale_fill_gradient(limits=c(0.5, 1),low="white", high="red", space="Lab") +
     theme(legend.position="bottom", legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1))
 }
 
 #Plot
 lapply(concordance_results, function(x) { con_chart(x)  })
+
+## Save Data!
+save(list = ls(all = TRUE), file=paste0('../reports/',make.names(paste0(args,collapse="")),".Rdata",collapse=""))
 ```

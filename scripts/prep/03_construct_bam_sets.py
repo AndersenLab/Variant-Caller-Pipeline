@@ -14,17 +14,14 @@ os.system('grep BGI1 00_all_bams.txt > 01a_BGI1_set.txt')
 os.system('grep BGI2 00_all_bams.txt > 01b_BGI2_set.txt')
 os.system('grep BGI3 00_all_bams.txt > 01c_BGI3_set.txt')
 
-# BGI2 Repeats
-df = pd.read_csv("00_all_bams.txt", names=['full_name'])
-df['Run'], df['Library'], df['Strain'], df['hash1'], df['hash2'] = zip(*df['full_name'].map(lambda x: x.replace(".bam","").split('-')))
-df = df.groupby(["Run","Library","Strain"]).filter(lambda x: x.count() == 2)
 
-df['idx'] = df.index % 2
-# Output 1st Repeat
-df[df['idx'] == 0]['full_name'].to_csv('02a_BGI2_rep1.txt', index=False)
-# Output 2nd Repeat
-df[df['idx'] == 1]['full_name'].to_csv('02b_BGI2_rep2.txt', index=False)
-# pull out dups
+# BGI1_RET sets
+for i in range(1,8):
+	os.system("grep BGI1-RET%s 00_all_bams.txt > BGI1-RET%s.txt" % (i, i))
+
+# BGI2_RET
+
+# BGI3_RET
 
 # Output BGI 1 & 3 for all 7 libs. 
 df = pd.read_csv("00_all_bams.txt", names=['full_name'])
