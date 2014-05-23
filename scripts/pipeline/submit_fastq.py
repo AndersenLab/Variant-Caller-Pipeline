@@ -14,9 +14,7 @@ os.system("prepare bwa")
 os.system("prepare samtools")
 
 
-
-
-for line in  open('../ancillary/fastq_list.txt','r'):
+for line in open('../ancillary/fastq_list.txt','r'):
 	f = line.replace('\n','').split(',')
 		# f = [x for x in f if x.find("QG557")!=-1] # Subset
 	if len(f) > 0:

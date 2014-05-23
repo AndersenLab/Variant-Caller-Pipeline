@@ -19,9 +19,12 @@ os.system('grep BGI3 00_all_bams.txt > 01c_BGI3_set.txt')
 for i in range(1,8):
 	os.system("grep BGI1-RET%s 00_all_bams.txt > BGI1-RET%s.txt" % (i, i))
 
-# BGI2_RET
+for i in range(1,8):
+	os.system("grep BGI2-RET%s 00_all_bams.txt > BGI2-RET%s.txt" % (i, i))
 
-# BGI3_RET
+for i in range(1,8):
+	os.system("grep BGI3-RET%s 00_all_bams.txt > BGI3-RET%s.txt" % (i, i))
+
 
 # Output BGI 1 & 3 for all 7 libs. 
 df = pd.read_csv("00_all_bams.txt", names=['full_name'])

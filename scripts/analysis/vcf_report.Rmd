@@ -1,5 +1,3 @@
-#/usr/bin/R
-
 VCF Compare Script
 ==================
 
@@ -138,7 +136,7 @@ p_list = list(SNPs="number.of.snps",
 plots <- lapply(names(p_list), function(i) {
   ggplot(snp_indel) + 
     geom_bar(stat="identity", aes_string(x="name", y=p_list[[i]])) +
-    geom_text( aes_string(x="name",y=p_list[[i]], label=p_list[[i]], vjust=-1)) +
+    geom_text( aes_string(x="name",y=p_list[[i]], label=p_list[[i]], vjust=2), color="white") +
     theme(legend.position="bottom", legend.title=element_blank()) +
     labs(y=i, x="Call Set",title=i) +
     scale_y_continuous(breaks=number_ticks(10), labels=scientific_format()) + 
@@ -155,6 +153,8 @@ plots[[3]]
 plots[[4]]
 ```
 
+# Number of SNPs/Strain
+
 ```{r PSC, results="asis", echo=FALSE}
 # Plot SNP data by Strain #
 
@@ -162,25 +162,28 @@ PSC_data <- do.call(rbind.data.frame,sapply(pair_results, function(x) { x["PSC"]
 
 PSC_data <- mutate(PSC_data, total_snps = nRefHom + nNonRefHom + nHets) %.%
             mutate(nonRef_snps = nHets + nNonRefHom) %.%
-            filter(nRefHom >0, id != Comparison)
+            filter(nRefHom >0, id != Comparison) %.%
+            arrange(Comparison)
+
 
 # Total SNPs
 ggplot(PSC_data) + 
-    geom_point(aes(x=sample, y= nonRef_snps, group=id, color=id)) +
-    geom_line(aes(x=sample, y= nonRef_snps, group=id, color=id)) +
+    geom_point(aes(x=sample, y= nonRef_snps, group=id, color=id), size=5) +
     labs(title="SNP count/file", x="Strain Name", y="non-reference Allele") +
-    theme(legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1))
-
-# Singletons
-ggplot(PSC_data) + 
-    geom_line(aes(x=sample, y=nSingletons, group=id, color=id)) +
-    geom_point(aes(x=sample, y=nSingletons, group=id, color=id)) +
-    labs(title="SNP count/file", x="Strain Name", y="non-reference Allele") +
-    theme(legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1))
-
+    theme(legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1)) +
+    facet_grid(. ~ Comparison, drop=T, space="free", scales = "free")
 ```
 
-## Ind. Sample Concordance #
+# Singletons
+```{r, results='asis', echo=FALSE}
+ggplot(PSC_data) + 
+    geom_point(aes(x=sample, y=nSingletons, group=id, color=id), size=5) +
+    labs(title="Singletons", x="Strain Name", y="non-reference Allele") +
+    theme(legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1))  +
+    facet_grid(. ~ Comparison, drop=T, space="free", scales = "free")
+```
+
+## Ind. Sample Concordance
 
 ```{r ind_conc, results="asis", echo=FALSE}
 con_comb <- do.call("rbind", concordance_results)
@@ -199,27 +202,26 @@ con_comb <- filter(con_comb, Query == Sample) %.%
 ggplot(con_comb) +
     geom_line(position="identity",aes(y=Concordance, x=con_comb$Sample , color=Comparison, group=Comparison)) + 
     geom_point(position="identity",aes(y=Concordance, x=con_comb$Sample , color=Comparison, group=Comparison)) +
-    labs(title="Average Discordance", x="Sample Name", y="Average Discordance (%)") +
-    theme(legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1))
+    labs(title="Concordance by Strain", x="Sample Name", y="Concordance (%)") +
+    theme(legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1))  +
+    facet_grid(. ~ Comparison, drop=T, space="free", scales = "free")
 
 ```
 
 ## Pairwise Concordance
 
 ```{r pairwise_con, results="asis", echo=FALSE}
-con_chart <- function(record) {
+  con_chart <- function(record) {
   # Fix data types
   record$Concordance <- as.numeric(record$Concordance)
   
-  # Restrict to strains in common.
-  #record <- filter(record, Query %in% Sample & Sample %in% Query)
   
   ggplot() +
     geom_tile(data=record, aes(x=Query, y=Sample, fill=Concordance), colour = "white") + 
     geom_tile(data=record, aes(x=Query, y=Sample, fill=Concordance), colour = "white") + 
     #geom_tile(data=SM_set, aes(x=Sample, y=Sample, fill=Average.Discordance.Number.of.sites), colour = "white") +
     labs(title=sprintf("%s",record[1,'Comparison'])) +
-    scale_fill_gradient(limits=c(0.5, 1),low="white", high="red", space="Lab") +
+    scale_fill_gradient(limits=c(0.0, 1),low="white", high="red", space="Lab") +
     theme(legend.position="bottom", legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1))
 }
 

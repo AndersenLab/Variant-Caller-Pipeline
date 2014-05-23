@@ -14,7 +14,7 @@ for lines in filter(len,open("sum.txt").read().split("|"))[:-1]:
 
 	# Pull out info
 	machine = lines[1].split(':')[0].replace("@","")
-	lane = lines[1].split(':')[2]
+	lane = lines[1].split(':')[1]
 	index = most_common([x[x.index("#")+1:-2] for x in lines])
 	
 	q.write('\t'.join([file, machine, lane, index, "\n"]))
