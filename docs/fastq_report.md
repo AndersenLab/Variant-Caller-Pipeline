@@ -21,9 +21,13 @@ Some strains failed to sequence because of improperly specified indices.
 
 # BGI2 Issues
 
-BGI mislabed libraries. __RET2__ and __RET3__ were sequenced in lane __0004__ and __0005__. However, the indices used in RET2 and RET3 are identicle to the sets used in RET6 and RET7. BGI therefore lanes __0004__ and __0005__ as RET6 and 7 even though they were truly RET2 and RET3.
+BGI mislabed libraries. __RET2__ and __RET3__ were sequenced in lane (BGI termed) __0004__ and __0005__. However, the indices used in RET2 and RET3 are identicle to the sets used in RET6 and RET7. Therefore lanes __0004__ and __0005__ were labeled using RET6 and RET7 libraries even though they were truly RET2 and RET3.
 
-For lane 1, the problem goes much deeper. The set of indices used in RET1 __are not__ identicle to __any__ other library, but if you take the union of index sets used in RET4 and RET5, you mostly cover the indices found in RET1 (although you don't capture all of them!). Apparently, this is what BGI did - meaning we were able to rescue a fair amount of the sample. The problem is that they demultiplexed using the indices 
+For lane 1, the problem goes much deeper. The set of indices used in RET1 __are not__ identicle to __any__ other library, but if you take the union of index sets used in RET4 and RET5, you mostly cover the indices found in RET1 (although you don't capture all of them!). Apparently, this is what BGI did - meaning we were able to rescue a fair amount of the sequence data. Not all indices were captured however, so we did lose two strains from BGI2.
+
+* (BGI Called it QG557) --> CB4856 / CB4857
+* (BGI Called it QX1212) --> CB4856 / CB4857
+
 
 | Lane	 | BGI Calls (RET) |	Actual (RET) |
 | --- | --- | --- | --- |
@@ -35,7 +39,9 @@ For lane 1, the problem goes much deeper. The set of indices used in RET1 __are 
 | 0008	 | 6	| 6 |
 | 0009	 | 7	| 7 |
 
-## RET1
+# RET1
+
+---
 
 ### RET1 ~ Called as RET4
 
@@ -49,8 +55,10 @@ For lane 1, the problem goes much deeper. The set of indices used in RET1 __are 
 | NIC198       | 4                | 1                    | QG557                          |
 | NIC231       | 4                | 1                    | CX11315                        |
 | NIC4         | 4                | 1                    | NIC232                         |
-| QG557        | 4                | 1                    | CB4856 / CB4857                |
-| QX1212       | 4                | 1                    | CB4856 / CB4857                |
+| _QG557_*        | 4                | 1                    | CB4856 / CB4857                |
+| _QX1212_*       | 4                | 1                    | CB4856 / CB4857                |
+
+\* These strains were removed.
 
 ### RET1 ~ Called as RET5
 
@@ -64,6 +72,10 @@ For lane 1, the problem goes much deeper. The set of indices used in RET1 __are 
 | QX2265       | 5                | 1                    | CB4856_CGC                     |
 | WN2011       | 5                | 1                    | JU258                          |
 | WN2018       | 5                | 1                    | HK104                          |
+
+# RET 2
+
+---
 
 ## RET 2 ~ Called as RET6
 
@@ -93,6 +105,10 @@ For lane 1, the problem goes much deeper. The set of indices used in RET1 __are 
 | QX2266       | 6                | 2                    | QX1792                         |
 | WN2001       | 6                | 2                    | NIC196                         |
 | WN2017       | 6                | 2                    | QX1794                         |
+
+# RET3
+
+---
 
 ## RET 3 ~ Called as RET7
 

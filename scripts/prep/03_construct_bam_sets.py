@@ -6,7 +6,7 @@ import pandas as pd
 os.chdir("../../data/ancillary/bam_sets")
 
 
-os.system("ssh dec211@dhunni.biochem.northwestern.edu \"cd /lscr2/andersenlab/dec211/data/bam/ && ls *.bam  -1 | egrep -v '(AF16|HK104)'\" > 00_all_bams.txt")
+os.system("ssh dec211@dhunni.biochem.northwestern.edu \"cd /lscr2/andersenlab/dec211/data/bam/ && ls *.bam  -1\" > 00_all_bams.txt")
 
 
 # Run Sets

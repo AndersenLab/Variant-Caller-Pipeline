@@ -10,7 +10,7 @@ Rscript -e "library(knitr); knit('vcf_report.Rmd', output='../../data/reports/RE
 Rscript -e "library(knitr); knit('vcf_report.Rmd', output='../../data/reports/RET6.md')" 03_RET6b.txt.Q40.vcf.gz 03_RET6.txt.Q40.vcf.gz 03_RET6a.txt.Q40.vcf.gz
 Rscript -e "library(knitr); knit('vcf_report.Rmd', output='../../data/reports/RET7.md')" 03_RET7b.txt.Q40.vcf.gz 03_RET7.txt.Q40.vcf.gz 03_RET7a.txt.Q40.vcf.gz
 
-Rscript -e "library(knitr); knit('vcf_report.Rmd', output='../../data/reports/BGI1-BGI2-BGI3-RET1.md')" BGI1-RET1.txt.Q40.vcf.gz BGI2-RET1.txt.Q40.vcf.gz BGI3-RET1.txt.Q40.vcf.gz BGI1-RET1.txt.Q40.vcf.gz
+Rscript -e "library(knitr); knit('vcf_report.Rmd', output='../../data/reports/BGI1-BGI2-BGI3-RET1.md')" BGI2-RET1.txt.Q40.vcf.gz BGI3-RET1.txt.Q40.vcf.gz 
 Rscript -e "library(knitr); knit('vcf_report.Rmd', output='../../data/reports/BGI1-BGI2-BGI3-RET2.md')" BGI1-RET2.txt.Q40.vcf.gz BGI2-RET2.txt.Q40.vcf.gz BGI3-RET2.txt.Q40.vcf.gz
 Rscript -e "library(knitr); knit('vcf_report.Rmd', output='../../data/reports/BGI1-BGI2-BGI3-RET3.md')" BGI1-RET3.txt.Q40.vcf.gz BGI2-RET3.txt.Q40.vcf.gz BGI3-RET3.txt.Q40.vcf.gz
 Rscript -e "library(knitr); knit('vcf_report.Rmd', output='../../data/reports/BGI1-BGI2-BGI3-RET4.md')" BGI1-RET4.txt.Q40.vcf.gz BGI2-RET4.txt.Q40.vcf.gz BGI3-RET4.txt.Q40.vcf.gz

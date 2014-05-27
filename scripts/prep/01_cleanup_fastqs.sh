@@ -983,10 +983,10 @@ mv -i BGI/BGI3/IndexWN2020_2.fq.gz          fq/BGI3-RET7b-WN2020-4f162-2.fq.gz
 ###################
 
 # Remove bad FASTqs
-rm  BGI/BGI2/IndexCHKPEI13010003/IndexCHKPEI13010003-12_1.fq.gz # [QG557]  Improper index provided during demultiplexing.
-rm  BGI/BGI2/IndexCHKPEI13010003/IndexCHKPEI13010003-12_2.fq.gz # [QG557]  Improper index provided during demultiplexing.
-rm  BGI/BGI2/IndexCHKPEI13010003/IndexCHKPEI13010003-18_1.fq.gz # [QX1212] Improper index provided during demultiplexing.
-rm  BGI/BGI2/IndexCHKPEI13010003/IndexCHKPEI13010003-18_2.fq.gz # [QX1212] Improper index provided during demultiplexing.
+rm  BGI/BGI2/IndexCHKPEI13010003/IndexCHKPEI13010003-12_1.fq.gz # [QG557 --> CB4856 / CB4857]  Improper index provided during demultiplexing.
+rm  BGI/BGI2/IndexCHKPEI13010003/IndexCHKPEI13010003-12_2.fq.gz # [QG557 --> CB4856 / CB4857]  Improper index provided during demultiplexing.
+rm  BGI/BGI2/IndexCHKPEI13010003/IndexCHKPEI13010003-18_1.fq.gz # [QX1212 --> CB4856 / CB4857] Improper index provided during demultiplexing.
+rm  BGI/BGI2/IndexCHKPEI13010003/IndexCHKPEI13010003-18_2.fq.gz # [QX1212 --> CB4856 / CB4857] Improper index provided during demultiplexing.
 
 # Remove Directories
 
@@ -1030,11 +1030,11 @@ mv -i BGI/BGI1/QX1430_130119_I861_FCC1GWRACXX_L6_CHKPEI13010003_2.fq.gz         
 
 
 # Remove Poor fastq's
-rm fq/BGI1-RET1-WN2021-afccb-1.fq.gz
-rm fq/BGI1-RET1-WN2021-d659a-2.fq.gz
+rm fq/BGI1-RET1-WN2021-afccb-1.fq.gz # [WN2021]
+rm fq/BGI1-RET1-WN2021-d659a-2.fq.gz # [WN2021]
 
-rm fq/BGI1-RET1-CB4857_CGC-f2e49-1.fq.gz
-rm fq/BGI1-RET1-CB4857_CGC-9b080-2.fq.gz
+rm fq/BGI1-RET1-CB4857_CGC-f2e49-1.fq.gz # [CB4857]
+rm fq/BGI1-RET1-CB4857_CGC-9b080-2.fq.gz # [CB4857]
 
 # qc
 cd fq

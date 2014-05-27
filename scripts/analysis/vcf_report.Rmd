@@ -146,7 +146,7 @@ plots <- lapply(names(p_list), function(i) {
 ```
 
 ## Individual VCF Results
-```{r, results='asis', echo=FALSE}
+```{r plots, results='asis', echo=FALSE}
 plots[[1]]
 plots[[2]]
 plots[[3]]

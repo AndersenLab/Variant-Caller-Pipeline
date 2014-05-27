@@ -30,3 +30,31 @@ sbatch 01_mpileup.py "03_RET7a.txt"
 sbatch 01_mpileup.py "03_RET7b.txt"
 sbatch 01_mpileup.py "03_RET7.txt"
 sbatch 01_mpileup.py "04_mmp_strains.txt"
+
+
+## BGI2_REP issues
+
+sbatch 01_mpileup.py "BGI1-RET1.txt"
+sbatch 01_mpileup.py "BGI1-RET2.txt"
+sbatch 01_mpileup.py "BGI1-RET3.txt"
+sbatch 01_mpileup.py "BGI1-RET4.txt"
+sbatch 01_mpileup.py "BGI1-RET5.txt"
+sbatch 01_mpileup.py "BGI1-RET6.txt"
+sbatch 01_mpileup.py "BGI1-RET7.txt"
+
+sbatch 01_mpileup.py "BGI3-RET1.txt"
+sbatch 01_mpileup.py "BGI3-RET2.txt"
+sbatch 01_mpileup.py "BGI3-RET3.txt"
+sbatch 01_mpileup.py "BGI3-RET4.txt"
+sbatch 01_mpileup.py "BGI3-RET5.txt"
+sbatch 01_mpileup.py "BGI3-RET6.txt"
+sbatch 01_mpileup.py "BGI3-RET7.txt"
+
+sbatch 01_mpileup.py "BGI2-RET4-rep1.txt"
+sbatch 01_mpileup.py "BGI2-RET4-rep2.txt"
+sbatch 01_mpileup.py "BGI2-RET5-rep1.txt"
+sbatch 01_mpileup.py "BGI2-RET5-rep2.txt"
+sbatch 01_mpileup.py "BGI2-RET6-rep1.txt"
+sbatch 01_mpileup.py "BGI2-RET6-rep2.txt"
+sbatch 01_mpileup.py "BGI2-RET7-rep1.txt"
+sbatch 01_mpileup.py "BGI2-RET7-rep2.txt"
