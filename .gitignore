@@ -11,8 +11,8 @@
 *.gz
 *.tbi
 *.bcf
-*.RData
-*.RHistory
+.RData
+.Rhistory
 docs/Manifest.numbers/*
 
 #--------------------------#

@@ -30,7 +30,7 @@
 #SBATCH --mail-user=dec@u.northwestern.edu
 #SBATCH --workdir=/lscr2/andersenlab/dec211/data/bam
 
-echo -e "bam\tavg_depth\tbase_coverage" > ../ancillary/bam_depth.txt
+echo -e "bam\tavg_depth\tbase_coverage" > ../data/ancillary/bam_depth.txt
 ls *.bam | xargs -I {} -n 1 -P 12 sh -c "samtools depth {} | awk -v r={} '{sum+=\$3;cnt++}END{print r\" \"sum/cnt\" \"sum}'  >> ../ancillary/bam_depth.txt" 
 
 ls ../ancillary/bam_sets/ | xargs -I {} -n 1 -P 12 sh -c "samtools depth  -f ../ancillary/bam_sets/{} | awk -v r={} '{sum+=\$3;cnt++}END{print r\" \"sum/cnt\" \"sum}'  >> ../ancillary/bam_depth.txt" 

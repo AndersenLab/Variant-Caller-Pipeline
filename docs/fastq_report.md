@@ -142,8 +142,4 @@ For lane 1, the problem goes much deeper. The set of indices used in RET1 __are 
 
 # BGI3 Issues
 
-There are two missing strains from BGI3
-
-* JU1409
-* JU1440
-* NIC4 [ Likely IndexC4.bam, misnamed ]
+_No Issues_
