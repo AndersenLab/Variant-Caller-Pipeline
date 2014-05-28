@@ -14,10 +14,16 @@ A subset of the indices for __BGI1 RET1__ were mixed up somehow. The following t
 | N2_CGC        | CATCCGGA   | TCGCAGGA      | QX1430        |                    |
 | QX1430        | CTGCGACA   | CATCCGGA      | MY23          |                    |
 
+### BGI1: 3 Total Strains Lost
+
 Some strains failed to sequence because of improperly specified indices.               
 
 * WN2021
 * CB4857_CGC
+
+Additional strains were lost - possibly due to poor sequencing.
+
+* QG557
 
 # BGI2 Issues
 
@@ -28,6 +34,7 @@ For lane 1, the problem goes much deeper. The set of indices used in RET1 __are 
 * (BGI Called it QG557) --> CB4856 / CB4857
 * (BGI Called it QX1212) --> CB4856 / CB4857
 
+## Additional Strains lost
 
 | Lane	 | BGI Calls (RET) |	Actual (RET) |
 | --- | --- | --- | --- |
@@ -140,6 +147,16 @@ For lane 1, the problem goes much deeper. The set of indices used in RET1 __are 
 | WN2020       | 7                | 3                    | JU1088                         |
 
 
+## BGI2: 3 Strains Lost
+
+* CB4856
+* CB4857
+* QG557
+
+
 # BGI3 Issues
 
-_No Issues_
+## BGI3: 2 Strains Lost
+
+* CB4852
+* QG557

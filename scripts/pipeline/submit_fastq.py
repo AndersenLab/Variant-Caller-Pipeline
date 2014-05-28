@@ -15,7 +15,7 @@ os.system("prepare samtools")
 
 
 for line in open('../ancillary/fastq_list.txt','r'):
-	f = line.replace('\n','').split(',')
+	f = line.replace('\n','').split('\t')
 		# f = [x for x in f if x.find("QG557")!=-1] # Subset
 	if len(f) > 0:
 		os.system("sbatch 00_align_paired.sh %s %s" % (f[0], f[1]))

@@ -978,15 +978,41 @@ mv -i BGI/BGI3/IndexWN2016_2.fq.gz          fq/BGI3-RET7b-WN2016-9321d-2.fq.gz
 mv -i BGI/BGI3/IndexWN2019_2.fq.gz          fq/BGI3-RET7b-WN2019-420c1-2.fq.gz
 mv -i BGI/BGI3/IndexWN2020_2.fq.gz          fq/BGI3-RET7b-WN2020-4f162-2.fq.gz
 
-###################
-# FIX BGI2 Issues #
-###################
+######################
+# Remove Poor FASTQs #
+######################
+
+# BGI1
+rm fq/BGI1-RET1-WN2021-afccb-1.fq.gz # [WN2021]
+rm fq/BGI1-RET1-WN2021-d659a-2.fq.gz # [WN2021]
+
+rm fq/BGI1-RET1-CB4857_CGC-f2e49-1.fq.gz # [CB4857]
+rm fq/BGI1-RET1-CB4857_CGC-9b080-2.fq.gz # [CB4857]
+
+rm fq/BGI1-RET4-QG557-f2e82-1.fq.gz
+rm fq/BGI1-RET4-QG557-49b2b-2.fq.gz
 
 # Remove bad FASTqs
-rm  BGI/BGI2/IndexCHKPEI13010003/IndexCHKPEI13010003-12_1.fq.gz # [QG557 --> CB4856 / CB4857]  Improper index provided during demultiplexing.
-rm  BGI/BGI2/IndexCHKPEI13010003/IndexCHKPEI13010003-12_2.fq.gz # [QG557 --> CB4856 / CB4857]  Improper index provided during demultiplexing.
-rm  BGI/BGI2/IndexCHKPEI13010003/IndexCHKPEI13010003-18_1.fq.gz # [QX1212 --> CB4856 / CB4857] Improper index provided during demultiplexing.
-rm  BGI/BGI2/IndexCHKPEI13010003/IndexCHKPEI13010003-18_2.fq.gz # [QX1212 --> CB4856 / CB4857] Improper index provided during demultiplexing.
+rm BGI/BGI2/IndexCHKPEI13010003/IndexCHKPEI13010003-12_1.fq.gz # [QG557 --> CB4856 / CB4857]  Improper index provided during demultiplexing.
+rm BGI/BGI2/IndexCHKPEI13010003/IndexCHKPEI13010003-12_2.fq.gz # [QG557 --> CB4856 / CB4857]  Improper index provided during demultiplexing.
+
+rm BGI/BGI2/IndexCHKPEI13010003/IndexCHKPEI13010003-18_1.fq.gz # [QX1212 --> CB4856 / CB4857] Improper index provided during demultiplexing.
+rm BGI/BGI2/IndexCHKPEI13010003/IndexCHKPEI13010003-18_2.fq.gz # [QX1212 --> CB4856 / CB4857] Improper index provided during demultiplexing.
+
+rm fq/BGI2-RET4-QG557-11122-2.fq.gz
+rm fq/BGI2-RET4-QG557-faed8-1.fq.gz
+
+# BGI3: Remove Poor Fastq's
+rm fq/BGI3-RET4a-CB4852-1be68-1.fq.gz # [CB4852]
+rm fq/BGI3-RET4a-CB4852-a738d-2.fq.gz # [CB4852]
+
+rm fq/BGI3-RET4a-QG557-41dba-1.fq.gz
+rm fq/BGI3-RET4a-QG557-be5ac-2.fq.gz
+
+
+#######################
+# Cleanup BGI2 folder #
+#######################
 
 # Remove Directories
 
@@ -1028,13 +1054,6 @@ mv -i BGI/BGI1/N2_CGC_130119_I861_FCC1GWRACXX_L6_CHKPEI13010003_2.fq.gz         
 mv -i BGI/BGI1/QX1430_130119_I861_FCC1GWRACXX_L6_CHKPEI13010003_1.fq.gz             fq/BGI1-RET1-MY23-584e1-1.fq.gz
 mv -i BGI/BGI1/QX1430_130119_I861_FCC1GWRACXX_L6_CHKPEI13010003_2.fq.gz             fq/BGI1-RET1-MY23-f7dab-2.fq.gz
 
-
-# Remove Poor fastq's
-rm fq/BGI1-RET1-WN2021-afccb-1.fq.gz # [WN2021]
-rm fq/BGI1-RET1-WN2021-d659a-2.fq.gz # [WN2021]
-
-rm fq/BGI1-RET1-CB4857_CGC-f2e49-1.fq.gz # [CB4857]
-rm fq/BGI1-RET1-CB4857_CGC-9b080-2.fq.gz # [CB4857]
 
 # qc
 cd fq
