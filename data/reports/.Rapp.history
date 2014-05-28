@@ -1,0 +1,3 @@
+load("/Users/dancook/Documents/Spring Rotation/Variant-Caller-Pipeline/data/reports/BGI1.RET4.txt.Q40.vcf.gzBGI2.RET4.rep1.txt.Q40.vcf.gz.Rdata")
+load("/Users/dancook/Documents/Spring Rotation/Variant-Caller-Pipeline/data/reports/X01a_BGI1_set.txt.Q40.vcf.gzBGI2.RET6.rep1.txt.Q40.vcf.gz.Rdata")
+load("/Users/dancook/Documents/Spring Rotation/Variant-Caller-Pipeline/data/reports/X01a_BGI1_set.txt.Q40.vcf.gzBGI2.RET6.rep1.txt.Q40.vcf.gz.Rdata")
