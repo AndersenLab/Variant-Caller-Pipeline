@@ -15,6 +15,9 @@
 .Rhistory
 docs/Manifest.numbers/*
 
+# Temp excel file
+~$*
+
 #--------------------------#
 # Specific Files to Ignore #
 #--------------------------#
