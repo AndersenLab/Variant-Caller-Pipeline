@@ -1,3 +1,45 @@
+# Sequencing Summary
+
+
+| Run        | Library | Actual/Expected |                         |
+|------------|---------|-----------------|-------------------------|
+| BGI1       | RET1    | (16/18)         | CB4857_CGC &  WN2021      |
+| BGI1       | RET2    | (24/24)         |                         |
+| BGI1       | RET3    | (24/24)         |                         |
+| BGI1       | RET4    | (23/24)         | QG557                   |
+| BGI1       | RET5    | (24/24)         |                         |
+| BGI1       | RET6    | (24/24)         |                         |
+| BGI1       | RET7    | (24/24)         |                         |
+| BGI1 Total | -       | __(159/162)__   |                         |
+| BGI2       | RET1    | (16/18)         | CB4857_CGC & WN2021      |
+| BGI2       | RET2    | (24/24)         |                         |
+| BGI2       | RET3    | (22/24)         | CB4853_UK & CB4858_UK    |
+| BGI2       | RET4    | (23/24)         | QG557                   |
+| BGI2       | RET5    | (24/24)         |                         |
+| BGI2       | RET6    | (24/24)         |                         |
+| BGI2       | RET7    | (24/24)         |                         |
+| BGI2 Total | -       | __(157/162)__   |                         |
+| BGI3       | RET1a   | (8/8)           |                         |
+| BGI3       | RET1b   | (10/10)         |                         |
+| BGI3       | RET2a   | (12/12)         |                         |
+| BGI3       | RET2b   | (12/12)         |                         |
+| BGI3       | RET3a   | (12/12)         |                         |
+| BGI3       | RET3b   | (12/12)         |                         |
+| BGI3       | RET4a   | (10/12)         | QG557, CB4852           |
+| BGI3       | RET4b   | (12/12)         |                         |
+| BGI3       | RET5a   | (12/12)         |                         |
+| BGI3       | RET5b   | (12/12)         |                         |
+| BGI3       | RET6a   | (12/12)         |                         |
+| BGI3       | RET6b   | (12/12)         |                         |
+| BGI3       | RET7a   | (12/12)         |                         |
+| BGI3       | RET7b   | (12/12)         |                         |
+| BGI3 Total | -       | __(160/162)__   |                         |
+| Princeton  | P       | __(8/8)__       |                         |
+| --- | --- | --- |  | 
+| __TOTAL ALL__  | -       | __(484/494)__   |                         |
+
+
+
 # BGI1 Issues
 
 A subset of the indices for __BGI1 RET1__ were mixed up somehow. The following table summarizes the problems.
