@@ -12,20 +12,26 @@ sed '107577d' ED3017.wb225.fa.combined.vcf | sed '107576d' ED3017.wb225.fa.combi
 rm ED3017.wb225.fa.combined.vcf
 mv ED3017.f.vcf ED3017.wb225.fa.combined.vcf
 
-# Add ALT genotype column 1/1 to end; 
-for r in `ls *.vcf`; do
-    echo $r
-    STRAIN_NAME=${r%%\.*}
+
+function fix_vcf (){
+    STRAIN_NAME=${1%%\.*}
     awk -v strain=$STRAIN_NAME -F $'\t' 'BEGIN {OFS = FS}
      $1 ~ "^\##" { print }
      $1 ~ "^\#CHROM" { print "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">"; print $0 "\tFORMAT\t" strain}
-     $1 !~ "^\#" { $3="1"; $8 = "."; print $0 "\tGT\t1|1"}
-     ' $r > $STRAIN_NAME.fixed.vcf
+     $1 !~ "^\#" { $3="."; $8 = "."; print "chr" $0 "\tGT\t1/1"}
+     ' $1 | sed -e 's/contig=<ID=/contig=<ID=chr/g' | sed -e 's/tDNA//g' > $STRAIN_NAME.fixed.vcf
     bgzip -f $STRAIN_NAME.fixed.vcf
-    tabix $STRAIN_NAME.fixed.vcf.gz
-done
+    tabix -f $STRAIN_NAME.fixed.vcf.gz
+}
+export -f fix_vcf
+
+parallel fix_vcf ::: `ls *.vcf`
+
 # Combine vcfs; collapse variants.
-vcf-merge -R 0/0 -c both `ls *.fixed.vcf.gz` > mmp.vcf
+vcf-merge -R 0/0 -c both `ls *.fixed.vcf.gz` > mmp.tmp.vcf
+
+# Fix Header and combine
+cat <(grep '##' mmp.tmp.vcf | sed -e 's/contig=<ID=/contig=<ID=chr/g' | sed -e 's/tDNA//g') <(grep '##' -v mmp.tmp.vcf) > mmp.vcf
 
 # Compres and Index.
 bgzip mmp.vcf
