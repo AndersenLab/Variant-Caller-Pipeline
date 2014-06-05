@@ -23,7 +23,13 @@ Rscript -e "library(knitr); knit('vcf_report.Rmd', output='../../data/reports/RE
 
 
 # Compare BGI Sets against one another
-Rscript -e "library(knitr); knit('vcf_report.Rmd', output='../../data/reports/BGI_all.md')" 01a_BGI1_set.txt.Q40.vcf.gz 01b_BGI2_set.txt.Q40.vcf.gz 03c_BGI3_set.txt.Q40.vcf.gz 
+Rscript -e "library(knitr); knit('vcf_report.Rmd', output='../../data/reports/BGI_all.md')" 01a_BGI1_set.txt.Q40.vcf.gz 01b_BGI2_set.txt.Q40.vcf.gz 01c_BGI3_set.txt.Q40.vcf.gz 
+
+
+
+# MMP comparisons
+Rscript -e "library(knitr); knit('vcf_report.Rmd', output='../../data/reports/mmp_RET1.md')" mmp.vcf.gz 00_all_bams.txt.Q40.vcf.gz
+
 
 
 # Cleanup Reports folder

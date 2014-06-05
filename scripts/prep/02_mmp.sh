@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# This script can be used to compare andersen sequencing with mmp.
+
 # Download mmp data.
 cd ../../data/mmp/
 wget --timestamping 'http://waterston.gs.washington.edu/trackhubs/data/isolate_vcf.tar.gz'
