@@ -28,9 +28,9 @@ Rscript -e "library(knitr); knit('vcf_report.Rmd', output='../../data/reports/BG
 
 
 # MMP comparisons
-Rscript -e "library(knitr); knit('vcf_report.Rmd', output='../../data/reports/mmp_RET1.md')" mmp.vcf.gz 00_all_bams.txt.Q40.vcf.gz
-
-
+Rscript -e "library(knitr); knit('vcf_report.Rmd', output='../../data/reports/mmp_andersen_mmp.md')" mmp.vcf.gz 04_mmp_strains.txt.Q40.vcf.gz
+ 
+04_mmp_strains.txt.Q40.vcf.gz
 
 # Cleanup Reports folder
 

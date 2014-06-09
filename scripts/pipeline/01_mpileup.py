@@ -24,8 +24,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=12
 #SBATCH --nodes=1
-#SBATCH --mem=32768
-#SBATCH --mem-per-cpu=2730
+#SBATCH --mem=32678
 
 #SBATCH --mail-user=dec@u.northwestern.edu
 #SBATCH --workdir=/lscr2/andersenlab/dec211/data/bam
@@ -37,9 +36,7 @@ from datetime import datetime
 startTime = datetime.now()
 import os, sys
 
-os.system("cat ../ancillary/chr3ranges.txt")
-#job_id = os.environ['SLURM_JOB_ID']
-job_id = "1"
+
 
 
 outfile = os.path.basename(sys.argv[1])
@@ -48,6 +45,9 @@ try:
 except:
 	options = []
 
+job_id = os.environ['SLURM_JOB_ID']
+os.system("echo \"Job Id: %s\"" % job_id)
+os.system("echo \"Set:%s\"" % outfile)
 
 # Depth
 #if options.find('d'):
@@ -71,10 +71,10 @@ f.write("%s - %s\n\n" % (job_id, outfile))
 # Pull out the chromosomes to so we can split and parallelize
 #com = "samtools view -H %s | grep '\@SQ' | sed 's/^.*SN://g' | cut -f 1 | xargs -I {} -n 1 -P 7 sh -c 'samtools mpileup -r chrIII:1-10000000 -uf ../reference/ce10/ce10.fa -r {} %s | bcftools view -vcg - > ../vcf/tmp.%s.{}.vcf'" % (fasta_list[0], ' '.join(fasta_list),  outfile)
 os.chdir("../bam")
-# Split~ Chr 3 only, for testing.
+# Split~ Chr 3 + Chr 5 for testing.
 
-com = "cat ../ancillary/chr3ranges.txt | xargs -I {} -n 1 -P 12 sh -c 'samtools mpileup -d 10000 -D -S -gu -f ../reference/ce10/ce10.fa -r {} %s | bcftools view -bvcg - > ../vcf/raw.%s.{}.bcf'" % (' '.join(fasta_list),  outfile)
-
+com = "cat ../ancillary/chr3ranges.txt | xargs -I {} -n 1 -P 12 --verbose sh -c 'samtools mpileup -d 100 -D -S -g -f ../reference/ce10/ce10.fa -r {} %s | bcftools view -O  -bvcg - > ../vcf/raw.%s.{}.bcf'" % (' '.join(fasta_list),  outfile)
+print com
 os.system(com)
 # awk '{ if ($6>=%s ||  $1 ~ /^#/) print}' - |
 os.system("cat ../ancillary/chr3ranges.txt | bcftools cat `ls -v ../vcf/raw.%s.*.bcf` | bcftools view - | vcf-sort > ../vcf/%s.vcf" % (outfile , outfile))
@@ -83,14 +83,6 @@ os.system("cat ../ancillary/chr3ranges.txt | bcftools cat `ls -v ../vcf/raw.%s.*
 # Process original file
 os.system("bgzip -f ../vcf/%s.vcf" % (outfile))
 os.system("tabix -f ../vcf/%s.vcf.gz" % (outfile))
-
-
-# Output in multiple qualities
-for quality in [10,20,30,40]:
-	os.system("vcfutils.pl varFilter -d 3 -Q %s ../vcf/%s.vcf > ../vcf/%s.Q%s.vcf" % (quality, outfile, outfile, quality))
-	# Zip, and index with tabix
-	os.system("bgzip -f ../vcf/%s.Q%s.vcf" % (outfile, quality))
-	os.system("tabix -f ../vcf/%s.Q%s.vcf.gz" % (outfile, quality))
 
 # Remove temporary files
 os.system("rm -f ../vcf/raw.%s.*" % outfile)

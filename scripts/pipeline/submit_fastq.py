@@ -8,14 +8,21 @@
 # Prepare necessary libraries
 
 import os
+import sys
+import subprocess
 
 # prepare bwa,etc.
 os.system("prepare bwa")
 os.system("prepare samtools")
 
 
-for line in open('../ancillary/fastq_list.txt','r'):
-	f = line.replace('\n','').split('\t')
-		# f = [x for x in f if x.find("QG557")!=-1] # Subset
-	if len(f) > 0:
-		os.system("sbatch 00_align_paired.sh %s %s" % (f[0], f[1]))
+if len(sys.argv) == 1:
+	grep = "."
+else:
+	grep = sys.argv[1]
+
+file_list = [x.split(',') for x in filter(len,os.popen('grep %s ../../data/ancillary/fastq_list.txt' % grep).read().split("\n")) if x.find("JU1652") != -1]
+
+for f in  file_list:
+	os.system("echo %s; echo %s" % (f[0],[f[1]]))
+	os.system("sbatch 00_align_paired.sh %s %s" % (f[0], f[1]))
