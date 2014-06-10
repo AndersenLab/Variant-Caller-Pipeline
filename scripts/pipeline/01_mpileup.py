@@ -73,22 +73,19 @@ f.write("%s - %s\n\n" % (job_id, outfile))
 os.chdir("../bam")
 # Split~ Chr 3 + Chr 5 for testing.
 
-com = "cat ../ancillary/chr3ranges.txt | xargs -I {} -n 1 -P 12 --verbose sh -c 'samtools mpileup -d 100 -D -S -g -f ../reference/ce10/ce10.fa -r {} %s | bcftools view -O  -bvcg - > ../vcf/raw.%s.{}.bcf'" % (' '.join(fasta_list),  outfile)
+com = "cat ../ancillary/chr_ranges.txt | xargs -I {} -n 1 -P 12 --verbose sh -c 'samtools mpileup -d 100 -D -S -g -f ../reference/ce10/ce10.fa -r {} %s | bcftools view -O  -bvcg - > ../vcf/raw.%s.{}.bcf'" % (' '.join(fasta_list),  outfile)
 print com
 os.system(com)
 # awk '{ if ($6>=%s ||  $1 ~ /^#/) print}' - |
-os.system("cat ../ancillary/chr3ranges.txt | bcftools cat `ls -v ../vcf/raw.%s.*.bcf` | bcftools view - | vcf-sort > ../vcf/%s.vcf" % (outfile , outfile))
+os.system("cat ../ancillary/chr_ranges.txt | bcftools cat `ls -v ../vcf/raw.%s.*.bcf` | bcftools view - | vcf-sort > ../vcf/%s.vcf" % (outfile , outfile))
 #os.system("bcftools index ../vcf/%s.bcf > ../vcf/%s.bcf" % (outfile, outfile))
 
-# Process original file
+# Process VCF
 os.system("bgzip -f ../vcf/%s.vcf" % (outfile))
 os.system("tabix -f ../vcf/%s.vcf.gz" % (outfile))
 
 # Remove temporary files
 os.system("rm -f ../vcf/raw.%s.*" % outfile)
-
-# Plot Results
-
 
 # Print total time
 f.write("Time to complete: %s\n\n" % str(datetime.now()-startTime))

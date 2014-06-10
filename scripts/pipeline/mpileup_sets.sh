@@ -2,7 +2,7 @@
 
 # Construct variant calling comparisons
 
-sbatch 01_mpileup.py "00_all_bams.txt"
+sbatch --nodelist=node7 01_mpileup.py "00_all_bams.txt"
 sbatch 01_mpileup.py "01a_BGI1_set.txt"
 sbatch 01_mpileup.py "01b_BGI2_set.txt"
 sbatch 01_mpileup.py "01c_BGI3_set.txt"
