@@ -25,7 +25,7 @@
 
 
 #SBATCH --mail-user=dec@u.northwestern.edu
-#SBATCH --workdir=/lscr2/andersenlab/dec211/data/fasta
+#SBATCH --workdir=/lscr2/andersenlab/dec211/data/fq
 
 BAM_DIR="../bam/"
 PICARD="../../tools/"

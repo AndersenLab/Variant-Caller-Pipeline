@@ -476,3 +476,11 @@ BGI3-RET7b-WN2013-94ec6-1.fq.gz	BGI3-RET7b-WN2013-6d6b2-2.fq.gz
 BGI3-RET7b-WN2016-322eb-1.fq.gz	BGI3-RET7b-WN2016-9321d-2.fq.gz
 BGI3-RET7b-WN2019-5ef36-1.fq.gz	BGI3-RET7b-WN2019-420c1-2.fq.gz
 BGI3-RET7b-WN2020-8d530-1.fq.gz	BGI3-RET7b-WN2020-4f162-2.fq.gz
+Princeton-P-AF16-58fd1-1.fq.gz	Princeton-P-AF16-002c2-2.fq.gz
+Princeton-P-CB4856_CGC-7526d-1.fq.gz	Princeton-P-CB4856_CGC-50b75-2.fq.gz
+Princeton-P-DL238-18570-1.fq.gz	Princeton-P-DL238-43afe-2.fq.gz
+Princeton-P-HK104-6c250-1.fq.gz	Princeton-P-HK104-33e5a-2.fq.gz
+Princeton-P-JU258-785a6-1.fq.gz	Princeton-P-JU258-8b86b-2.fq.gz
+Princeton-P-MY23-1607c-1.fq.gz	Princeton-P-MY23-0c2d3-2.fq.gz
+Princeton-P-N2_CGC-2a0b2-1.fq.gz	Princeton-P-N2_CGC-085a3-2.fq.gz
+Princeton-P-QX1430-bcb73-1.fq.gz	Princeton-P-QX1430-5c0b6-2.fq.gz

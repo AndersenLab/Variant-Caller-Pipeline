@@ -35,4 +35,19 @@ export -f trim
 parallel trim ::: `ls *.fq`
 
 
+# Move to fq folder, rename.
+for r in `ls *-1.trimmed*.gz`; do
+	fixname=${r/.trimmed/};
+	hash=`md5 -q $r | cut -b 1-5`
+	newname=${fixname/"-1"/"-$hash-1"}
+	echo $newname
+	mv $r ../fq/$newname
+done
 
+for r in `ls *-2.trimmed*.gz`; do
+	fixname=${r/.trimmed/};
+	hash=`md5 -q $r | cut -b 1-5`
+	newname=${fixname/"-2"/"-$hash-2"}
+	echo $newname
+	mv $r ../fq/$newname
+done

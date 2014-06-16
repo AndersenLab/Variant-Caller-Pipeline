@@ -1,28 +1,52 @@
 #!/usr/bin/python
 
-# This script will submit a series of fasta files (located within a subfolder) for alignment. 
+# This script assemble the list of fastqs, identify which have yet to be aligned, and align them (producing BAMs)
 
 # Example Usage:
-# bash submit_fastq.sh IndexCHKPEI13010003 - All of the files in this directory will be aligned.
+# sh submit_fastq.sh 
 
 # Prepare necessary libraries
 
+import glob
 import os
 import sys
-import subprocess
-
-# prepare bwa,etc.
-os.system("prepare bwa")
-os.system("prepare samtools")
 
 
-if len(sys.argv) == 1:
-	grep = "."
+#os.system("prepare bwa")
+#os.system("prepare samtools")
+
+orig_dir = os.getcwd()
+
+# Change to appropriate directory
+os.chdir("../../data/fq")
+fasta_list = glob.glob("*.fq.gz")
+
+
+os.chdir("../bam")
+
+align_fqs = []
+fasta_sets = zip(sorted([x for x in fasta_list if "-1.fq.gz" in x]), sorted([x for x in fasta_list if "-2.fq.gz" in x]))
+# Check that all fastqs intact, and construct bam list.
+for ele in fasta_sets:
+	# Check that Run, Library, Sample/Strain are all identicle.
+	if (ele[0].split("-")[0:3] == ele[1].split("-")[0:3]) == False:
+		sys.exit("Error: Fastqs do not line up.")
+	# Check if bam exists
+	bam_name = "-".join(ele[0].split("-")[0:4] + [ele[1].split("-")[3]]) + ".bam"
+	if os.path.isfile(bam_name) == False:
+		align_fqs.append(ele)
+
+# Output to user
+if len(align_fqs) > 0:
+	print "(%s/%s) Not Aligned" % (len(align_fqs),len(fasta_sets))
+	print "Aligning new fastqs:"
+	print '\n'.join(["%-50s %-50s" % (x[0], x[1]) for x in align_fqs])
 else:
-	grep = sys.argv[1]
+	print "All fastqs are aligned and in Bam format."
 
-file_list = [x.split(',') for x in filter(len,os.popen('grep %s ../../data/ancillary/fastq_list.txt' % grep).read().split("\n")) if x.find("JU1652") != -1]
+# Return to original directory
+os.chdir(orig_dir)
 
-for f in  file_list:
-	os.system("echo %s; echo %s" % (f[0],[f[1]]))
+# Submit align commands
+for f in align_fqs:
 	os.system("sbatch 00_align_paired.sh %s %s" % (f[0], f[1]))
