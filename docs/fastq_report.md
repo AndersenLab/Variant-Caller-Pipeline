@@ -59,7 +59,6 @@ A subset of the indices for __BGI1 RET1__ were mixed up somehow. The following t
 ### BGI1: 3 Total Strains Lost
 
 Some strains failed to sequence because of improperly specified indices.               
-
 * WN2021
 * CB4857_CGC
 

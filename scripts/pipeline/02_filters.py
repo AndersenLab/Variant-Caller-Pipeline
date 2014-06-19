@@ -31,18 +31,38 @@
 
 import sys, os
 
-options = sys.argv
+options = sys.argv[1:]
+
 
 #==============#
 # Depth Filter #
 #==============#
 
+# Depth
 if "-d" in options:
 	depth_filter = options[options.index("-d") + 1]
+	d_file = "d%s" % depth_filter
 else:
 	depth_filter = ""
-print depth_filter
+	d_file = ""
 
+# Polarize Hets
+if "-h" in options:
+	polarize_hets = ""
+	h_file = ".h"
+else:
+	polarize_hets = ""
+	h_file = ""
+
+# Low Complexity Regions
+if "-l" in options:
+	lcr_filter = ""
+	lcr_file = ".lcr"
+else:
+	lcr_filter = ""
+	lcr_file = ""
+
+os.system("vcfutils.pl varFilter -d 3 -D %s -Q 30 %s > %s.%s.vcf.gz" % (depth_filter, options[0], options[0].replace(".txt.vcf.gz", ""), d_file))
 
 # Output in multiple qualities
 #for quality in [40]:
