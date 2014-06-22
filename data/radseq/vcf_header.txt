@@ -1,0 +1,51 @@
+##fileformat=VCFv4.2
+##fileDate=20130317
+##source=anderson08_radseq
+##reference=ftp://ftp.wormbase.org:/pub/wormbase/releases/WS230/species/c_elegans/c_elegans.WS225.genomic.fa.gz
+##contig=<ID=chrI,assembly=WS225,length=15072423,species="Caenorhabditis elegans">
+##contig=<ID=chrII,assembly=WS225,length=15279345,species="Caenorhabditis elegans">
+##contig=<ID=chrIII,assembly=WS225,length=13783700,species="Caenorhabditis elegans">
+##contig=<ID=chrIV,assembly=WS225,length=17493793,species="Caenorhabditis elegans">
+##contig=<ID=chrV,assembly=WS225,length=20924149,species="Caenorhabditis elegans">
+##contig=<ID=chrX,assembly=WS225,length=17718866,species="Caenorhabditis elegans">
+##contig=<ID=chrM,assembly=WS225,length=13794,species="Caenorhabditis elegans">
+##FILTER=<ID=fia,Description="fraction of covering alignments that are informative">
+##FILTER=<ID=fci,Description="fraction of informative reads that confirm indel">
+##FILTER=<ID=cmq,Description="RMS mapping quality of confirming alignments">
+##FILTER=<ID=man,Description="manually removed by MMP invesitgator">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Total Depth">
+##INFO=<ID=END,Number=1,Type=Integer,Description="End position of the variant described in this record">
+##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">
+##INFO=<ID=SVLEN,Number=1,Type=Integer,Description="Difference in length between REF and ALT alleles">
+##INFO=<ID=SPAN,Number=1,Type=Integer,Description="Number of Unique Spanning Alignments Supporting Event">
+##INFO=<ID=NCOV,Number=1,Type=Float,Description="Mean Coverage in Region Normalized to 15x Strain Coverage">
+##INFO=<ID=NQDEV,Number=1,Type=Float,Description="Deviations from Background 15x Windowed/Normalized Coverage">
+##INFO=<ID=CODING,Number=1,Type=String,Description="Predicted Effect on Coding Sequence">
+##INFO=<ID=NCRNA,Number=1,Type=String,Description="Predicted Effect on Noncoding RNAs">
+##INFO=<ID=IMPRECISE,Number=0,Type=Flag,Description="Imprecise structural variation">
+##INFO=<ID=CIPOS,Number=2,Type=Integer,Description="Confidence interval around POS for imprecise variants">
+##INFO=<ID=CIEND,Number=2,Type=Integer,Description="Confidence interval around END for imprecise variants">
+##INFO=<ID=RGS,Number=1,Type=Integer,Description="Region score">
+##INFO=<ID=MQDV,Number=1,Type=Float,Description="Mean region qdev value">
+##INFO=<ID=THRSHLD,Number=1,Type=Float,Description="Strain threshold qdev value">
+##INFO=<ID=MNQDV,Number=1,Type=Float,Description="Region minimum qdev value">
+##INFO=<ID=MXQDV,Number=1,Type=Float,Description="Region maximum qdev value">
+##INFO=<ID=INDEL,Number=1,Type=String,Description="Indel type,length,sequence">
+##INFO=<ID=CLASS,Number=1,Type=String,Description="Indel classification">
+##INFO=<ID=EIR,Number=3,Type=Integer,Description="Equivalent indel region length, start, and end">
+##INFO=<ID=ICV,Number=2,Type=Integer,Description="Informative read indel confirmation and coverage">
+##INFO=<ID=FIA,Number=1,Type=Float,Description="Fraction of covering reads that are informative">
+##INFO=<ID=FCI,Number=1,Type=Float,Description="Fraction of informative reads that confirm indel">
+##INFO=<ID=CMQ,Number=1,Type=Integer,Description="RMS mapping quality of confirming alignments">
+##INFO=<ID=GF,Number=1,Type=String,Description="Genomic feature">
+##INFO=<ID=SN,Number=1,Type=String,Description="Sequence name">
+##INFO=<ID=PN,Number=1,Type=String,Description="Public name">
+##INFO=<ID=RFC,Number=1,Type=String,Description="Reading frame change">
+##INFO=<ID=AAC,Number=1,Type=String,Description="Amino acid change">
+##INFO=<ID=DP20,Number=1,Type=Integer,Description="Depth of Phred >=20 aligning reads">
+##INFO=<ID=ACGTN,Number=1,Type=String,Description="Phred >=20 A,C,G,T,Other">
+##INFO=<ID=GRANT,Number=1,Type=String,Description="Grantham Score of AA Change">
+##INFO=<ID=GERP,Number=1,Type=String,Description="Gerp score of base">
+##INFO=<ID=PHYLOP,Number=1,Type=String,Description="PhyloP score of base">
+##INFO=<ID=PHASTCONS,Number=1,Type=String,Description="phastCons score of base">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">

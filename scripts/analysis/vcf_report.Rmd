@@ -8,7 +8,7 @@ library(scales)
 library(knitr)
 
 
-dir <- "/Users/dancook/Documents/Spring Rotation/Variant-Caller-Pipeline/data/vcf/"
+dir <- "/Users/Dan/Documents/git/Variant-Caller-Pipeline/data/vcf/"
 
 opts_knit$set(root.dir =dir)
 setwd(dir)
@@ -48,6 +48,7 @@ get_con_matrix <- function(f1, f2) {
   # Get intersection of samples
   joint_samples <- union(f1_samples, f2_samples)
   # Retrieve Concordance Data
+  print(sprintf("echo %s | xargs -I {} -n 1 -P 50 sh -c \"bcftools gtcheck -S {} -g %s %s | sed \'s/$/\t{}/\'\" | egrep -v '#' ", paste0(joint_samples, collapse=" "), f1, f2))
   r <- read.csv2(pipe(sprintf("echo %s | xargs -I {} -n 1 -P 50 sh -c \"bcftools gtcheck -S {} -g %s %s | sed \'s/$/\t{}/\'\" | egrep -v '#' ", paste0(joint_samples, collapse=" "), f1, f2)), as.is=T, sep='\t',header=F, col.names= c("Concordance", "Uncertainty", "Average Depth", "Number of Sites", "Sample", "Query"))
   r$Comparison <- sprintf('%s__%s', repl_multiple(f1, replace_words), repl_multiple(f2, replace_words))
   r
