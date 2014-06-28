@@ -1,4 +1,4 @@
-# Read Depth Stats
+# Generate statistics on read depth. 
 
 bam_depth <- read.table("../../data/ancillary/bam_depth.txt", header=T, quote="\"",  strip.white = T)
 View(bam_depth)

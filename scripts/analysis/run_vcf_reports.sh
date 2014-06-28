@@ -12,7 +12,7 @@ Rscript -e "library(knitr); knit('vcf_report.Rmd', output='../../data/reports/RE
 Rscript -e "library(knitr); knit('vcf_report.Rmd', output='../../data/reports/RET7.md')" BGI1-RET7.txt.Q40.vcf.gz BGI2-RET7.txt.Q40.vcf.gz BGI3-RET7.txt.Q40.vcf.gz
 
 
-Rscript -e "library(knitr); knit('vcf_report.Rmd', output='../../data/reports/RET1.md')" 03_RET1.txt.Q40
+Rscript -e "library(knitr); knit('vcf_report.Rmd', output='../../data/reports/radseq_mmp.md')" mmp.vcf.gz andersen08_radseq.ws225.vcf.gz
 Rscript -e "library(knitr); knit('vcf_report.Rmd', output='../../data/reports/RET2.md')" BGI1-RET2.txt.Q40.vcf.gz BGI2-RET2.txt.Q40.vcf.gz BGI3-RET2.txt.Q40.vcf.gz
 Rscript -e "library(knitr); knit('vcf_report.Rmd', output='../../data/reports/RET3.md')" BGI1-RET3.txt.Q40.vcf.gz BGI2-RET3.txt.Q40.vcf.gz BGI3-RET3.txt.Q40.vcf.gz
 Rscript -e "library(knitr); knit('vcf_report.Rmd', output='../../data/reports/RET4.md')" BGI1-RET4.txt.Q40.vcf.gz BGI2-RET4.txt.Q40.vcf.gz BGI3-RET4.txt.Q40.vcf.gz
@@ -37,3 +37,5 @@ Rscript -e "library(knitr); knit('vcf_report.Rmd', output='../../data/reports/mm
 gimli # Generates all the pdfs!
 
 rm *.md
+
+echo AB1 AB3 CB4853 | xargs -I {} -n 1 -P 25 sh -c "bcftools gtcheck -S {} -g andersen08_radseq.ws225.vcf.gz mmp.vcf.gz  | sed 's/$/\t{}/'" | egrep -v '#'
