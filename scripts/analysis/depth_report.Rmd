@@ -7,10 +7,7 @@ library(gridExtra, quietly=T)
 library(scales)
 library(knitr)
 
-
-dir <- "/Users/dancook/Documents/Spring_Rotation/Variant-Caller-Pipeline/data/vcf/"
-
-opts_knit$set(root.dir =dir)
+opts_knit$set(root.dir = dir)
 setwd(dir)
 args <- sprintf("%s", commandArgs(trailingOnly = TRUE))
 
