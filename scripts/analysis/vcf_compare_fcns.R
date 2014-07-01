@@ -108,3 +108,20 @@ con_chart <- function(record) {
   
 }
 
+con_chart_union <- function(record) {
+  # Fix data types
+  record$Concordance <- as.numeric(record$Concordance)
+  
+  # Use to subset records in common
+  record <- filter(record, Sample %in% Query & Query%in%Sample)
+  
+  ggplot() +
+    geom_tile(data=record, aes(x=Query, y=Sample, fill=Concordance), colour = "white") + 
+    geom_tile(data=record, aes(x=Query, y=Sample, fill=Concordance), colour = "white") + 
+    #geom_tile(data=SM_set, aes(x=Sample, y=Sample, fill=Average.Discordance.Number.of.sites), colour = "white") +
+    labs(title=sprintf("%s",record[1,'Comparison']), y=str_split(record[1,'Comparison'],"__")[[1]][1], x=str_split(record[1,'Comparison'],"__")[[1]][2]) +
+    scale_fill_gradient(low="white", high="red", space="Lab") +
+    theme(legend.position="bottom", legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1, ))
+  
+}
+

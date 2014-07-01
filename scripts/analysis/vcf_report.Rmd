@@ -125,7 +125,6 @@ con_comb <- filter(con_comb, Query == Sample) %.%
   mutate(sample_count=length(Sample)) %.%
   arrange(Comparison)
 
-
 # Plot concordance of multiple concordance results
 ggplot(con_comb) +
     geom_line(position="identity",aes(y=Concordance, x=con_comb$Sample , color=Comparison, group=Comparison)) + 
@@ -134,6 +133,14 @@ ggplot(con_comb) +
     theme(legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1))  +
     facet_grid(. ~ Comparison, drop=T, space="free", scales = "free")
 
+
+# Plot union results
+ggplot(con_comb) +
+    geom_line(position="identity",aes(y=Concordance, x=con_comb$Sample , color=Comparison, group=Comparison)) + 
+    geom_point(position="identity",aes(y=Concordance, x=con_comb$Sample , color=Comparison, group=Comparison)) +
+    labs(title="Concordance by Strain - Union", x="Sample Name", y="Concordance (%)") +
+    theme(legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1))  +
+    facet_grid(. ~ Comparison, drop=T, space="free", scales = "free")
 ```
 
 ## Pairwise Concordance
@@ -142,6 +149,7 @@ ggplot(con_comb) +
 
 #Plot
 lapply(concordance_results, function(x) { con_chart(x) })
+lapply(concordance_results, function(x) { con_chart_union(x) })
 
 ## Save Data!
 save(list = ls(all = TRUE), file=paste0('../reports/',make.names(paste0(args,collapse="")),".Rdata",collapse=""))
