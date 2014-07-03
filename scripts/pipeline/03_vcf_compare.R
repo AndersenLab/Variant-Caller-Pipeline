@@ -149,7 +149,7 @@ concordance_chart <- function(record, union=F) {
     geom_tile(data=record, aes(x=Query, y=Sample, fill=Concordance), colour = "white") + 
     #geom_tile(data=SM_set, aes(x=Sample, y=Sample, fill=Average.Discordance.Number.of.sites), colour = "white") +
     labs(title=plot_title, y=str_split(record[1,'Comparison'],"__")[[1]][1], x=str_split(record[1,'Comparison'],"__")[[1]][2]) +
-    scale_fill_gradient(low="white", high="red", space="Lab") +
+    scale_fill_gradient(low="#FFE900", high="#0092FF", space="Lab", limits=c(0.95,1)) +
     theme(legend.position="bottom", legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1, ))
   ggsave(filename = paste0(results_dir, plot_title, ".png", collapse=""), height=20, width=20)
 }
