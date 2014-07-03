@@ -1,8 +1,8 @@
 #!/usr/bin/python
 
-###############
+#=============#
 # Description #
-###############
+#=============#
 #
 # This script will submit a job that:
 #
@@ -35,18 +35,18 @@ import os, sys
 
 outfile = os.path.basename(sys.argv[1])
 try:
-    options = os.path.basename(sys.argv[2])
+	options = os.path.basename(sys.argv[2])
 except:
-    options = []
+	options = []
 
 job_id = os.environ['SLURM_JOB_ID']
 os.system("echo \"Job Id: %s\"" % job_id)
 os.system("echo \"Set:%s\"" % outfile)
 
 # Depth
-# if options.find('d'):
-# Calculate the average depth of the bam file.
-# avg_depth = os.popen("samtools depth BGI2-RET4-QX1212-11d58-2bc7c.bam  | awk '{sum+=$3;cnt++}END{print sum/cnt}'")
+#if options.find('d'):
+	# Calculate the average depth of the bam file.
+	#avg_depth = os.popen("samtools depth BGI2-RET4-QX1212-11d58-2bc7c.bam  | awk '{sum+=$3;cnt++}END{print sum/cnt}'")
 
 
 # Filter depth
@@ -59,21 +59,21 @@ print "Command: %s" % (sys.argv)
 print fasta_list
 print
 
-f = file('../ancillary/log_set.txt', 'a+')
+f = file('../ancillary/log_set.txt','a+')
 f.write("%s - %s\n\n" % (job_id, outfile))
 
 # Pull out the chromosomes to so we can split and parallelize
-# com = "samtools view -H %s | grep '\@SQ' | sed 's/^.*SN://g' | cut -f 1 | xargs -I {} -n 1 -P 7 sh -c 'samtools mpileup -r chrIII:1-10000000 -uf ../reference/ce10/ce10.fa -r {} %s | bcftools view -vcg - > ../vcf/tmp.%s.{}.vcf'" % (fasta_list[0], ' '.join(fasta_list),  outfile)
+#com = "samtools view -H %s | grep '\@SQ' | sed 's/^.*SN://g' | cut -f 1 | xargs -I {} -n 1 -P 7 sh -c 'samtools mpileup -r chrIII:1-10000000 -uf ../reference/ce10/ce10.fa -r {} %s | bcftools view -vcg - > ../vcf/tmp.%s.{}.vcf'" % (fasta_list[0], ' '.join(fasta_list),  outfile)
 os.chdir("../bam")
 
 # Split~ Chr 3 + Chr 5 for testing.
-os.system("cat ../ancillary/chr_ranges.txt | xargs -I {} -n 1 -P 12 --verbose sh -c 'samtools mpileup -d 100 -D -S -g -f ../reference/ce10/ce10.fa -r {} %s | bcftools view -bvcg - > ../vcf/raw.%s.{}.bcf'" % (' '.join(fasta_list),  outfile))
+os.system("cat ../ancillary/chr_ranges.txt | xargs -I {} -n 1 -P 0 --verbose sh -c 'samtools mpileup -t DP,SP -g -f ../reference/ce10/ce10.fa -r {} %s | bcftools call -c -v > ../vcf/raw.%s.{}.bcf'" % (' '.join(fasta_list),  outfile))
 # awk '{ if ($6>=%s ||  $1 ~ /^#/) print}' - |
-os.system("cat ../ancillary/chr_ranges.txt | bcftools cat `ls -v ../vcf/raw.%s.*.bcf` | bcftools view - | vcf-sort > ../vcf/%s.vcf" % (outfile, outfile))
-# os.system("bcftools index ../vcf/%s.bcf > ../vcf/%s.bcf" % (outfile, outfile))
+os.system("cat ../ancillary/chr_ranges.txt | bcftools concat -O b `ls -v ../vcf/raw.%s.*.bcf` > ../vcf/%s.vcf" % (outfile , outfile))
+#os.system("bcftools index ../vcf/%s.bcf > ../vcf/%s.bcf" % (outfile, outfile))
 
 # Process VCF
-os.system("bgzip -f ../vcf/%s.vcf" % (outfile))
+os.system("bgzip -f ../vcf/%s.vcf"    % (outfile))
 os.system("tabix -f ../vcf/%s.vcf.gz" % (outfile))
 
 # Remove temporary files
