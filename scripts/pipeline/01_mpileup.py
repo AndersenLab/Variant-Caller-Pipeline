@@ -31,53 +31,37 @@
 from datetime import datetime
 startTime = datetime.now()
 import os, sys
+import os.path
 
-
-outfile = os.path.basename(sys.argv[1])
-try:
-	options = os.path.basename(sys.argv[2])
-except:
-	options = []
-
-job_id = os.environ['SLURM_JOB_ID']
-os.system("echo \"Job Id: %s\"" % job_id)
-os.system("echo \"Set:%s\"" % outfile)
-
-# Depth
-#if options.find('d'):
-	# Calculate the average depth of the bam file.
-	#avg_depth = os.popen("samtools depth BGI2-RET4-QX1212-11d58-2bc7c.bam  | awk '{sum+=$3;cnt++}END{print sum/cnt}'")
-
+outfile = sys.argv[1]
 
 # Filter depth
 fasta_list = open("../ancillary/bam_sets/" + outfile,'r').read().split('\n')
 
+# Initiate Log File
+if os.path.isfile("../log2.txt") == False:
+	f = open("../log2.txt",'w')
+	f.write("jobid\tnode\tsubmission\tdate\tTimeToComplete\tcommand\n")
+else:
+	f = open('../log2.txt','a+')
 
-print "Job Id: %s" % job_id
-print
-print "Command: %s" % (sys.argv)
-print fasta_list
-print
+f.write("%s\t%s\t%s\t%s\tTimeToComplete_%s\t%s\n" % (os.environ['SLURM_JOB_ID'], os.environ['SLURM_JOB_NODELIST'], outfile, startTime, os.environ['SLURM_JOB_ID'], sys.argv))
 
-f = file('../ancillary/log_set.txt','a+')
-f.write("%s - %s\n\n" % (job_id, outfile))
+f.flush()
 
 # Pull out the chromosomes to so we can split and parallelize
 #com = "samtools view -H %s | grep '\@SQ' | sed 's/^.*SN://g' | cut -f 1 | xargs -I {} -n 1 -P 7 sh -c 'samtools mpileup -r chrIII:1-10000000 -uf ../reference/ce10/ce10.fa -r {} %s | bcftools view -vcg - > ../vcf/tmp.%s.{}.vcf'" % (fasta_list[0], ' '.join(fasta_list),  outfile)
 os.chdir("../bam")
 
 # Split~ Chr 3 + Chr 5 for testing.
-os.system("cat ../ancillary/chr_ranges.txt | xargs -I {} -n 1 -P 0 --verbose sh -c 'samtools mpileup -t DP,SP -g -f ../reference/ce10/ce10.fa -r {} %s | bcftools call -c -v > ../vcf/raw.%s.{}.bcf'" % (' '.join(fasta_list),  outfile))
-# awk '{ if ($6>=%s ||  $1 ~ /^#/) print}' - |
-os.system("cat ../ancillary/chr_ranges.txt | bcftools concat -O b `ls -v ../vcf/raw.%s.*.bcf` > ../vcf/%s.vcf" % (outfile , outfile))
-#os.system("bcftools index ../vcf/%s.bcf > ../vcf/%s.bcf" % (outfile, outfile))
+os.system("cat ../ancillary/chr_ranges.txt | xargs -I {} -n 1 -P 12 --verbose sh -c 'samtools mpileup -t DP,SP -g -f ../reference/ce10/ce10.fa -r {} %s | bcftools call -f GQ -c -v > ../vcf/raw.%s.{}.bcf'" % (' '.join(fasta_list),  outfile))
+os.system("cat ../ancillary/chr_ranges.txt | bcftools concat -O b `ls -v ../vcf/raw.%s.*.bcf` > ../vcf/%s.bcf" % (outfile , outfile.replace(".txt","")))
 
-# Process VCF
-os.system("bgzip -f ../vcf/%s.vcf"    % (outfile))
-os.system("tabix -f ../vcf/%s.vcf.gz" % (outfile))
+# Index
+os.system("bcftools index -f ../vcf/%s.bcf" % outfile.replace(".txt",""))
 
 # Remove temporary files
 os.system("rm -f ../vcf/raw.%s.*" % outfile)
 
-# Print total time
-f.write("Time to complete: %s\n\n" % str(datetime.now()-startTime))
+# Replace file with time taken
+os.system("sed --in-place='.bak' -e 's/TimeToComplete_%s/%s/' ../log2.txt" % (os.environ['SLURM_JOB_ID'], str(datetime.now()-startTime)))
