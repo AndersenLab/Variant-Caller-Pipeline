@@ -31,7 +31,6 @@ library(stringr)
 library(dplyr)
 library(grid)
 
-debug = T
 
 # Functions for working with bcftools + VCF
 #=======================#
@@ -142,7 +141,7 @@ concordance_chart <- function(record, union=F) {
     geom_tile(data=record, aes(x=Query, y=Sample, fill=Concordance), colour = "white") + 
     #geom_tile(data=SM_set, aes(x=Sample, y=Sample, fill=Average.Discordance.Number.of.sites), colour = "white") +
     labs(title=plot_title, y=str_split(record[1,'Comparison'],"__")[[1]][1], x=str_split(record[1,'Comparison'],"__")[[1]][2]) +
-    scale_fill_gradient(low="#FFE900", high="#0092FF", space="Lab", limits=c(0.95,1)) +
+    scale_fill_gradient(low="#FFE900", high="#0092FF", space="Lab") +
     theme(legend.position="bottom", legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1, ))
   ggsave(filename = paste0(results_dir, plot_title, ".png", collapse=""), height=20, width=20)
 }
@@ -254,9 +253,15 @@ ggsave(filename = paste0(results_dir, "individual_concordance.png"), width=lengt
 lapply(concordance_results, function(x) { concordance_chart(x) })
 lapply(concordance_results, function(x) { concordance_chart(x, union=T) })
 
+# Fix up df of con_comb.
+con_comb <- group_by(con_comb, Comparison, Sample)
 
-## Plot Concordance by file; compared with the original.
-ggplot(concordance_results)
+
+
+## Plot Concordance by file; compared with the the first vcf input.
+ggplot(con_comb) +
+    geom_line(position="identity",aes(x=Comparison, y=Concordance , color=Sample, group=Sample), alpha=0.5) +
+    stat_summary(fun.y=mean, mapping = aes(x=con_comb$Comparison, group="Comparison", y = con_comb$Concordance), geom="line", size = 2)
 
 ## Save Data Again
 save(list = ls(all = TRUE), file= paste0(results_dir, "data.Rdata"))
