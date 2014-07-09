@@ -15,6 +15,13 @@
 .Rhistory
 docs/Manifest.numbers/*
 
+#
+# Dirs to Ignore
+#
+data/vcf/*
+results/*
+
+
 # Temp excel file
 ~$*
 
