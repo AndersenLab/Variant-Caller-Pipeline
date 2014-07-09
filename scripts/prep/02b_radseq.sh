@@ -4,6 +4,18 @@
 
 cd ../../data/radseq/
 
+# Download files necessary to perform liftover.
+wget ftp://ftp.sanger.ac.uk/pub2/wormbase/software/Remap-between-versions/remap.tar.bz2
+gunzip remap.tar.bz2
+tar -xf remap.tar
+
+for r in `ls Remap-for-other-groups/*`; do
+	echo $r
+done;
+
+mv Remap-for-other-groups/* .
+rm -d Remap-between-versions/
+
 # Convert to gff
 awk 'NR>1{ split($1,a,"_"); print "CHROMOSOME_" substr($1,0,1) "\t.\t" $1 "\t" a[2] "\t" a[2] "\t.\t+\t.\t."}' 41188SNPset.txt | egrep -v "MtDNA" > 41188SNPset.ws210.gff
 # liftover
