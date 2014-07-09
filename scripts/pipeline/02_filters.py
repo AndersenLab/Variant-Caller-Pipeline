@@ -6,12 +6,12 @@
 #
 # This script will submit a job that:
 #
-# * Runs reports
+# * Filters VCF Files
 #
 
 
 
-#SBATCH --job-name=vcfcomp
+#SBATCH --job-name=vcfFilt
 
 #SBATCH --output=../log/%j.txt
 #SBATCH --error=../log/%j.out
@@ -29,21 +29,30 @@
 
 # Parse arguments
 
-import sys, os
+import sys, os, subprocess
 
-options = sys.argv[1:]
-
+vcf = sys.argv[1]
+options = sys.argv[2:]
 
 #==============#
 # Depth Filter #
 #==============#
 
+filter_set = []
+
 # Depth
 if "-d" in options:
-	depth_filter = options[options.index("-d") + 1]
-	d_file = "d%s" % depth_filter
+	d_option = options[options.index("-d") + 1]
+	if d_option == "avg2":
+		threshold = float(subprocess.check_output("bcftools query -f '%%DP\n' %s | awk '{ total += $1; count++ } END { avg=(total/count);  print (avg + 3*sqrt(avg)) }'" % (vcf), shell=True))
+	elif d_option == "avg3":
+		threshold = float(subprocess.check_output("bcftools query -f '%%DP\n' %s | awk '{ total += $1; count++ } END { avg=(total/count);  print (avg + 2*sqrt(avg)) }'" % (vcf), shell=True))
+	else:
+		threshold = d_option
+	# Set up depth filter
+		filter_set.append("bcftools filter --include 'DP<%s' --soft-filter 'DP_lt_%s'" % (threshold , threshold))
+		d_file = ".d%s" % threshold
 else:
-	depth_filter = ""
 	d_file = ""
 
 # Polarize Hets
@@ -54,19 +63,33 @@ else:
 	polarize_hets = ""
 	h_file = ""
 
+# Quality
+if "-Q" in options:
+	q_option = options[options.index("-Q") + 1]
+	filter_set.append("bcftools filter -O b --include '%%QUAL>%s' --soft-filter 'QUAL_gt_%s'" % (q_option, q_option))
+	q_file = ".Q%s" % q_option
+else:
+	q_file = ""
+
 # Low Complexity Regions
 if "-l" in options:
-	lcr_filter = ""
+	lcr_filter = "-R ../ancillary/ce10_no_LCR.bed"
 	lcr_file = ".lcr"
 else:
 	lcr_filter = ""
 	lcr_file = ""
 
-os.system("vcfutils.pl varFilter -d 3 -D %s -Q 30 %s > %s.%s.vcf.gz" % (depth_filter, options[0], options[0].replace(".txt.vcf.gz", ""), d_file))
+vcf_filename = ''.join([vcf.replace(".vcf.gz","").replace(".bcf","").replace(".vcf",""),q_file,d_file,lcr_file,".bcf"])
 
-# Output in multiple qualities
-#for quality in [40]:
-#	os.system("vcfutils.pl varFilter -d 3 -Q %s ../vcf/%s.vcf > ../vcf/%s.Q%s.vcf" % (quality, outfile, outfile, quality))
-#	# Zip, and index with tabix
-#	os.system("bgzip -f ../vcf/%s.Q%s.vcf" % (outfile, quality))
-#	os.system("tabix -f ../vcf/%s.Q%s.vcf.gz" % (outfile, quality))
+
+# Set filter_variable
+if "-d" in options or "-Q" in options:
+	filter_set = " | ".join(filter_set)
+else:
+	filter_set = ""
+
+print "bcftools view %s %s | %s > %s " % (lcr_filter, vcf, filter_set, vcf_filename)
+
+os.system("bcftools view %s %s | %s > %s " % (lcr_filter, vcf, filter_set, vcf_filename))
+os.system("bcftools index -f %s" % vcf_filename)
+

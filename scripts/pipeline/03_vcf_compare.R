@@ -149,7 +149,6 @@ concordance_chart <- function(record, union=F) {
 
 args <- sprintf("%s", commandArgs(trailingOnly = TRUE))
 setwd("../../data/vcf/")
-args <- c("radseq.vcf.gz","test5.20.bcf","test5.30.bcf","test5.40.bcf","test5.50.bcf")
 
 results_dir <- sprintf("../../results/%s/", args[1])
 dir.create(results_dir)
@@ -186,7 +185,7 @@ cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2",
 lapply( names(snp_indel)[names(snp_indel) != "id"] , function(i) {
   ggplot(snp_indel) + 
     geom_bar(stat="identity", aes_string(x="id", y= i, fill="id")) +
-    geom_text( aes_string(x="id",y=i, label= i , vjust=2), color="white", size=12) +
+    geom_text( aes_string(x="id",y=i, label= i , vjust=2), color="white", size=9) +
     theme(legend.position="none", legend.title=element_blank()) +
     labs(y=Cap(i), x="Call Set",title=Cap(i) ) +
     scale_y_continuous(breaks=number_ticks(10), labels=comma_format()) + 
@@ -247,7 +246,7 @@ ggplot(con_comb) +
     theme(legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1))  +
     facet_grid(. ~ Comparison, drop=T, space="free", scales = "free")
 
-ggsave(filename = paste0(results_dir, "individual_concordance.png"), width=length(last_plot()$data$Query)/7)
+ggsave(filename = paste0(results_dir, "individual_concordance.png"), width=14)
 
 ## Pairwise Concordance Grid
 lapply(concordance_results, function(x) { concordance_chart(x) })
@@ -262,6 +261,7 @@ con_comb <- group_by(con_comb, Comparison, Sample)
 ggplot(con_comb) +
     geom_line(position="identity",aes(x=Comparison, y=Concordance , color=Sample, group=Sample), alpha=0.5) +
     stat_summary(fun.y=mean, mapping = aes(x=con_comb$Comparison, group="Comparison", y = con_comb$Concordance), geom="line", size = 2)
+    ggsave(filename = paste0(results_dir, "stratified_concordance.png"), width=14)
 
 ## Save Data Again
 save(list = ls(all = TRUE), file= paste0(results_dir, "data.Rdata"))
