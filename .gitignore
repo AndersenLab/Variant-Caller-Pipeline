@@ -18,8 +18,12 @@ docs/Manifest.numbers/*
 #
 # Dirs to Ignore
 #
+data/reports/*
 data/vcf/*
+data/bam/*
 results/*
+data/reference/*
+data/radseq/41188SNPset.txt
 
 
 # Temp excel file
