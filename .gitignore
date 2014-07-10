@@ -19,6 +19,7 @@ docs/Manifest.numbers/*
 # Dirs to Ignore
 #
 data/reports/*
+data/radseq/*
 data/vcf/*
 data/bam/*
 results/*
