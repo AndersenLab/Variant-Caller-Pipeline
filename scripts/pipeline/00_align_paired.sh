@@ -30,20 +30,6 @@
 BAM_DIR="../bam/"
 PICARD="../../tools/"
 
-###############
-# Get FASTQ's #
-###############
-
-# Convert f1 and f2 to arrays
-f1=(${1//-/ })
-f2=(${2//-/ })
-
-echo $1
-echo $2
-
-bam_name=${BAM_DIR}${f1[0]}-${f1[1]}-${f1[2]}-${f1[3]}-${f2[3]}.bam
-
-
 ##################
 # Error Checking #
 ##################
@@ -69,6 +55,13 @@ then
 	exit 0
 fi
 
+# Check that a reference is specified.
+if [ -z "$3" ]
+then
+	echo "No reference defined; aborting."
+	exit 0
+fi
+
 # Double check checksums
 f1_md5=`md5sum $1 |  awk '{print substr($0,0,5)}'`
 f2_md5=`md5sum $2 |  awk '{print substr($0,0,5)}'`
@@ -86,8 +79,23 @@ if [ "$2" -ne "${f2[3]}" ]; then
 	exit 0
 fi
 
-bwa mem -t 8 ../reference/ce10/ce10.fa ${1} ${2} | samtools view -b -S -h -  > ${BAM_DIR}${f1[3]}-${f2[3]}.tmp.bam
+###############
+# Get FASTQ's #
+###############
 
+# Convert f1 and f2 to arrays
+f1=(${1//-/ })
+f2=(${2//-/ })
+
+echo $1
+echo $2
+
+# Set reference
+ref=${3##*/}
+
+bam_name=${BAM_DIR}${f1[0]}-${f1[1]}-${f1[2]}-${ref%.fa}-${f1[3]}-${f2[3]}.bam
+
+bwa mem -t 8 ../reference/${3} ${1} ${2} | samtools view -b -S -h -  > ${BAM_DIR}${f1[3]}-${f2[3]}.tmp.bam
 
 ## Replace Header & Sort Simultaneously!
 java	-jar	${PICARD}AddOrReplaceReadGroups.jar	\
