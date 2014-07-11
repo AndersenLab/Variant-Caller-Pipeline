@@ -1,0 +1,5 @@
+# Compare WGS, Radseq, and MMP strains
+prepare samtools
+sbatch 03_vcf_compare.R wgs_radseq 00_all_bams.txt.vcf.gz andersen08_radseq.ws225.vcf.gz
+sbatch 03_vcf_compare.R mmp_wgs mmp.vcf.gz 00_all_bams.txt.vcf.gz
+sbatch 03_vcf_compare.R mmp_radseq mmp.vcf.gz andersen08_radseq.ws225.vcf.gz
