@@ -24,10 +24,12 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=12
 #SBATCH --nodes=1
-#SBATCH --mem=32678
+#SBATCH --mem=32768
+#SBATCH --mem-per-cpu=2730
 
 #SBATCH --mail-user=dec@u.northwestern.edu
 #SBATCH --workdir=/lscr2/andersenlab/dec211/data/bam
+
 from datetime import datetime
 startTime = datetime.now()
 import os, sys
@@ -49,19 +51,22 @@ f.write("%s\t%s\t%s\t%s\tTimeToComplete_%s\t%s\n" % (os.environ['SLURM_JOB_ID'],
 
 f.flush()
 
-# Pull out the chromosomes to so we can split and parallelize
-#com = "samtools view -H %s | grep '\@SQ' | sed 's/^.*SN://g' | cut -f 1 | xargs -I {} -n 1 -P 7 sh -c 'samtools mpileup -r chrIII:1-10000000 -uf ../reference/ce10/ce10.fa -r {} %s | bcftools view -vcg - > ../vcf/tmp.%s.{}.vcf'" % (fasta_list[0], ' '.join(fasta_list),  outfile)
-os.chdir("../bam")
 
-# Split~ Chr 3 + Chr 5 for testing.
-os.system("cat ../ancillary/chr_ranges.txt | xargs -I {} -n 1 -P 12 --verbose sh -c 'samtools mpileup -t DP,DV,DP4,SP -g -D -f ../reference/ce10/ce10.fa -r {} %s | bcftools call --format-fields GQ,GP -m -v > ../vcf/raw.%s.{}.bcf'" % (' '.join(fasta_list),  outfile))
-os.system("cat ../ancillary/chr_ranges.txt | bcftools concat -O b `ls -v ../vcf/raw.%s.*.bcf` > ../vcf/%s.bcf" % (outfile , outfile.replace(".txt","")))
+com = "cat ../ancillary/chr_ranges.txt | xargs -I {} -n 1 -P 12 sh -c 'samtools mpileup -d 10000 -D -S -gu -f ../reference/ce10/ce10.fa -r {} %s | bcftools view -bvcg - > ../vcf/raw.%s.{}.bcf'" % (' '.join(fasta_list),  outfile)
 
-# Index
-os.system("bcftools index -f ../vcf/%s.bcf" % outfile.replace(".txt",""))
+os.system(com)
+# awk '{ if ($6>=%s ||  $1 ~ /^#/) print}' - |
+os.system("cat ../ancillary/chr_ranges.txt  | bcftools cat `ls -v ../vcf/raw.%s.*.bcf` | bcftools view - | vcf-sort > ../vcf/%s.vcf" % (outfile , outfile))
+#os.system("bcftools index ../vcf/%s.bcf > ../vcf/%s.bcf" % (outfile, outfile))
+
+# Process original file
+os.system("bgzip -f ../vcf/%s.vcf" % (outfile))
+os.system("tabix -f ../vcf/%s.vcf.gz" % (outfile))
+
 
 # Remove temporary files
 os.system("rm -f ../vcf/raw.%s.*" % outfile)
 
+# Print total time
 # Replace file with time taken
 os.system("sed --in-place='.bak' -e 's/TimeToComplete_%s/%s/' ../log2.txt" % (os.environ['SLURM_JOB_ID'], str(datetime.now()-startTime)))

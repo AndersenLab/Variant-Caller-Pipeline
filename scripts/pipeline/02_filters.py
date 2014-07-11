@@ -52,8 +52,8 @@ if "-d" in options:
 	else:
 		threshold = d_option
 	# Set up depth filter
-		filter_set.append("bcftools filter --include 'DP<%s' --soft-filter 'DP_lt_%s'" % (threshold , threshold))
-	d_file = ".d%s" % threshold
+		filter_set.append("bcftools filter --include 'DP<%s' " % (threshold))
+	d_file = ".d%04d" % int(threshold)
 else:
 	d_file = ""
 
@@ -68,8 +68,8 @@ else:
 # Quality
 if "-Q" in options:
 	q_option = options[options.index("-Q") + 1]
-	filter_set.append("bcftools filter -O b --include '%%QUAL>%s' --soft-filter 'QUAL_gt_%s'" % (q_option, q_option))
-	q_file = ".Q%s" % q_option
+	filter_set.append("bcftools filter -O b --include '%%QUAL>%s' " % (q_option))
+	q_file = ".Q%04d" % int(q_option)
 else:
 	q_file = ""
 

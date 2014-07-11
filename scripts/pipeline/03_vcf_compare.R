@@ -76,7 +76,7 @@ get_vcf_stats <- function(f) {
   SN  <- import_table("SN", tmp)
   QUAL <- import_table("QUAL", tmp)
   PSC <- import_table("PSC", tmp)
-    
+  
   comp <- sprintf('%s', f_name)
   
   # Replace ID Field as is appropriate
@@ -87,7 +87,7 @@ get_vcf_stats <- function(f) {
   SN <- reshape(SN, direction="wide", timevar=c("key"), ids=c("id"))
   names(SN) <- make.names(gsub("value.","",gsub(":","", names(SN))))
   SN$id <- f_name
-        
+  
   list(SN=SN, QUAL=QUAL, PSC=PSC)
 }
 
@@ -96,30 +96,32 @@ get_vcf_stats <- function(f) {
 #=============================#
 
 get_concordance_matrix <- function(f1, f2) {
-  # Generate a concordance Matrix
-  tmp <- tempfile()
-  
   # Get sample names from each file
   f1_samples <- unlist(str_split(system(sprintf("bcftools view -h %s| grep '#CHROM' | cut -f '10-'",f1), intern=T),'\t'))
   f2_samples <- unlist(str_split(system(sprintf("bcftools view -h %s| grep '#CHROM' | cut -f '10-'",f2), intern=T),'\t'))
   
-  # Get intersection of samples
-  joint_samples <- union(f1_samples, f2_samples)
+
   # Retrieve Concordance Data
   
   # Local Version [MAC]
   if (Sys.info()["sysname"] == "Darwin") {
-  r <- read.csv2(pipe(sprintf("echo %s | xargs -t -I \'{}\' -n 1 -P 20 sh -c \"bcftools gtcheck -s {} -G 1 -g %s %s | sed \'s/$/\t{}/\'\" | egrep -v \'#\' ", paste0(joint_samples, collapse=" "), f1, f2)), as.is=T, sep='\t',header=F, col.names= c("CN","Discordance_total", "Discordance_per_site", "Number_of_Sites", "Sample", "Sample_ID", "Query"))
+    r <- read.csv2(pipe(sprintf("echo %s | xargs -t -I \'{}\' -n 1 -P 20 sh -c \"bcftools gtcheck -s {} -G 1 -g %s %s | sed \'s/$/\t{}/\'\" | egrep -v \'#\' ", paste0(joint_samples, collapse=" "), f1, f2)), as.is=T, sep='\t',header=F, col.names= c("CN","Discordance_total", "Discordance_per_site", "Number_of_Sites", "Sample", "Sample_ID", "Query"))
   } else {
-  # Cluster Version
-  r <- read.csv2(pipe(sprintf("echo -n %s | xargs -d \' \' -t -I \'{}\' -n 1 -P 20 sh -c \"bcftools gtcheck -s {} -G 1 -g %s %s | sed \'s/$/\t{}/\'\" | egrep -v \'#\' ", paste0(joint_samples, collapse=" "), f1, f2)), as.is=T, sep='\t',header=F, col.names= c("CN","Discordance_total", "Discordance_per_site", "Number_of_Sites", "Sample", "Sample_ID", "Query"))
+    system(sprintf("echo -n %s | xargs -d \' \' -t -I \'{}\' -n 1 -P 20 sh -c \"bcftools gtcheck -s {} -G 1 -g %s %s | sed \'s/$/\t{}/\' | egrep -v \'#\' > '%s{}.CN.txt'\"", paste0(f2_samples, collapse=" "), f1, f2, results_dir))
+    r <- lapply(f2_samples, function(x) {
+      read.table(sprintf("%s%s.CN.txt", results_dir,x),as.is=T, sep='\t',header=F, col.names= c("CN","Discordance_total", "Discordance_per_site", "Number_of_Sites", "Sample", "Sample_ID", "Query"))
+      })
+    r <- do.call("rbind", r)
   }
+  
+  save(list = ls(all = TRUE), file= paste0(results_dir, "data2.Rdata"))
   
   # Fix numbers
   r$Discordance_total <- as.integer(r$Discordance_total)
+  r$Number_of_Sites <- as.integer(r$Number_of_Sites)
   r$Discordance_per_site <- NULL
   r$Comparison <- sprintf('%s__%s', repl_multiple(f1, replace_words), repl_multiple(f2, replace_words))
-
+  
   # Add in Concordance Rate
   r$Concordance <- as.numeric((r$Number_of_Sites - r$Discordance_total) / r$Number_of_Sites)
   r
@@ -127,15 +129,15 @@ get_concordance_matrix <- function(f1, f2) {
 
 concordance_chart <- function(record, union=F) {
   # Plots concordance. 
-
+  
   # Use to subset records in common
   if (union==T) {
-  record <- filter(record, Sample %in% Query & Query%in%Sample)
-  plot_title <- sprintf("%s_Union",record[1,'Comparison'])
+    record <- filter(record, Sample %in% Query & Query%in%Sample)
+    plot_title <- sprintf("%s_Union",record[1,'Comparison'])
   } else {
-  plot_title <- sprintf("%s",record[1,'Comparison'])
+    plot_title <- sprintf("%s",record[1,'Comparison'])
   }
-
+  
   ggplot() +
     geom_tile(data=record, aes(x=Query, y=Sample, fill=Concordance), colour = "white") + 
     geom_tile(data=record, aes(x=Query, y=Sample, fill=Concordance), colour = "white") + 
@@ -143,7 +145,7 @@ concordance_chart <- function(record, union=F) {
     labs(title=plot_title, y=str_split(record[1,'Comparison'],"__")[[1]][1], x=str_split(record[1,'Comparison'],"__")[[1]][2]) +
     scale_fill_gradient(low="#FFE900", high="#0092FF", space="Lab") +
     theme(legend.position="bottom", legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1, ))
-  ggsave(filename = paste0(results_dir, plot_title, ".png", collapse=""), height=20, width=20)
+  ggsave(filename = paste0(results_dir, plot_title, ".png", collapse=""), height=20, width=15+length(args))
 }
 
 
@@ -155,12 +157,14 @@ dir.create(results_dir)
 
 pairs <- list()
 # args <- c("andersen08_radseq.ws225.vcf.gz", "mmp.vcf.gz")
-for (i in 1:(length(args)-1)) {
-  pairs<-append(pairs,list(c(args[1], args[i+1])))
+for (i in 2:(length(args)-1)) {
+  pairs<-append(pairs,list(c(args[2], args[i+1])))
 }
 
-# Generate Data
-vcf_stats <- lapply(args, function(x) { get_vcf_stats(x) })
+print(pairs)
+
+#Generate Data
+vcf_stats <- lapply(args[2:length(args)], function(x) { get_vcf_stats(x) })
 
 #-----------------------------------------------#
 # Plot Individual vcf results for SNPs + Indels #
@@ -180,7 +184,7 @@ Cap <- function(x) {
         sep="", collapse=" ")
 }
 
-cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#A1887F", "#FFB300", "#0080ff","#0080ff", "#408000")
 
 lapply( names(snp_indel)[names(snp_indel) != "id"] , function(i) {
   ggplot(snp_indel) + 
@@ -194,30 +198,30 @@ lapply( names(snp_indel)[names(snp_indel) != "id"] , function(i) {
     theme(axis.title.y=element_text(vjust=4)) +
     theme(plot.title=element_text(size=18, vjust=3)) +
     scale_fill_manual(values=cbPalette) +
-    ggsave(filename = paste0(results_dir, i, ".png", collapse=""), plot=last_plot(), height=12)
+    ggsave(filename = paste0(results_dir, i, ".png", collapse=""), plot=last_plot(), height=12, width=15+length(args))
 })
 
 # Number of SNPs/Strain
 # Plot SNP data by Strain #
 PSC_data <- do.call(rbind.data.frame,sapply(vcf_stats, function(x) { x["PSC"] }))
 PSC_data <- mutate(PSC_data, total_snps = nRefHom + nNonRefHom + nHets) %.%
-            mutate(nonRef_snps = nHets + nNonRefHom)
+  mutate(nonRef_snps = nHets + nNonRefHom)
 
 # Total SNPs
 ggplot(PSC_data) + 
-    geom_point(aes(x=sample, y= nonRef_snps, group=id, color=id), size=5) +
-    labs(title="SNP count/file", x="Strain Name", y="non-reference Allele") +
-    theme(legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1)) +
-    scale_color_manual(values=cbPalette) +
-    ggsave(filename = paste0(results_dir, "Total_SNPs.png", collapse=""), width=14)
+  geom_point(aes(x=sample, y= nonRef_snps, group=id, color=id), size=5) +
+  labs(title="SNP count/file", x="Strain Name", y="non-reference Allele") +
+  theme(legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1)) +
+  scale_color_manual(values=cbPalette) +
+  ggsave(filename = paste0(results_dir, "Total_SNPs.png", collapse=""), width=14)
 
 # Singletons
 ggplot(PSC_data) + 
-    geom_point(aes(x=sample, y=nSingletons, group=id, color=id), size=5) +
-    labs(title="Singletons", x="Strain Name", y="[Singletons] non-reference Allele") +
-    theme(legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1))  +
-    scale_color_manual(values=cbPalette) +
-    ggsave(filename = paste0(results_dir, "Singletons_SNPs.png", collapse=""),  width=14)
+  geom_point(aes(x=sample, y=nSingletons, group=id, color=id), size=5) +
+  labs(title="Singletons", x="Strain Name", y="[Singletons] non-reference Allele") +
+  theme(legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1))  +
+  scale_color_manual(values=cbPalette) +
+  ggsave(filename = paste0(results_dir, "Singletons_SNPs.png", collapse=""),  width=14)
 
 save(list = ls(all = TRUE), file= paste0(results_dir, "data.Rdata"))
 
@@ -226,6 +230,8 @@ save(list = ls(all = TRUE), file= paste0(results_dir, "data.Rdata"))
 # Examine Concordance #
 #---------------------#
 concordance_results <- lapply(pairs, function(x) { get_concordance_matrix(x[1],x[2]) })
+
+save(list = ls(all = TRUE), file= paste0(results_dir, "data2.Rdata"))
 
 # Individual Sample Concordance
 con_comb <- do.call("rbind", concordance_results)
@@ -240,13 +246,12 @@ con_comb <- filter(con_comb, Query == Sample) %.%
 
 # Plot concordance of individual strains
 ggplot(con_comb) +
-    geom_line(position="identity",aes(y=Concordance, x=con_comb$Sample , color=Comparison, group=Comparison)) + 
-    geom_point(position="identity",aes(y=Concordance, x=con_comb$Sample , color=Comparison, group=Comparison)) +
-    labs(title="Concordance by Strain", x="Sample Name", y="Concordance (%)") +
-    theme(legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1))  +
-    facet_grid(. ~ Comparison, drop=T, space="free", scales = "free")
+  geom_line(position="identity",aes(y=Concordance, x=con_comb$Sample , color=Comparison, group=Comparison)) + 
+  geom_point(position="identity",aes(y=Concordance, x=con_comb$Sample , color=Comparison, group=Comparison)) +
+  labs(title="Concordance by Strain", x="Sample Name", y="Concordance (%)") +
+  theme(legend.position="right", axis.text.x = element_text(angle = 90, hjust = 1))
 
-ggsave(filename = paste0(results_dir, "individual_concordance.png"), width=14)
+ggsave(filename = paste0(results_dir, "individual_concordance.png"), width=10)
 
 ## Pairwise Concordance Grid
 lapply(concordance_results, function(x) { concordance_chart(x) })
@@ -256,13 +261,20 @@ lapply(concordance_results, function(x) { concordance_chart(x, union=T) })
 con_comb <- group_by(con_comb, Comparison, Sample)
 
 
+fix_labels <- function(x) {
+  sub(".bcf","",str_split_fixed(x,"__",2)[,2])
+}
+
 
 ## Plot Concordance by file; compared with the the first vcf input.
 ggplot(con_comb) +
-    geom_line(position="identity",aes(x=Comparison, y=Concordance , color=Sample, group=Sample), alpha=0.5) +
-    stat_summary(fun.y=mean, mapping = aes(x=con_comb$Comparison, group="Comparison", y = con_comb$Concordance), geom="line", size = 2)
-    ggsave(filename = paste0(results_dir, "stratified_concordance.png"), width=14)
-
-## Save Data Again
-save(list = ls(all = TRUE), file= paste0(results_dir, "data.Rdata"))
-
+  geom_line(position="identity",aes(x=Comparison, y=Concordance , color=Sample, group=Sample), alpha=0.5) +
+  stat_summary(fun.y=mean, mapping = aes(x=con_comb$Comparison, group="Comparison", y = con_comb$Concordance), geom="line", size = 2) +
+  labs(title=sprintf("%s vs:Concordance by Strain",args[2]), x="Sample Name", y="Concordance (%)") +
+  theme(legend.position="right", legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1, )) +
+  scale_x_discrete(labels=fix_labels) +
+  ggsave(filename = paste0(results_dir, "stratified_concordance.png"), width=14)
+       
+       ## Save Data Again
+       save(list = ls(all = TRUE), file= paste0(results_dir, "data.Rdata"))
+       

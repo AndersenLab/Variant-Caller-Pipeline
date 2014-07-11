@@ -29,7 +29,8 @@ cut -f 3,4,5 41188SNPset.ws210.gff > $ws210
 header=`mktemp -t tmp`
 head -n 1 41188SNPset.txt | awk '{gsub(/^/,"#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t"); print}' > $header
 
-join -t $'\t' $ws210 41188SNPset.txt | gawk -f ../../scripts/prep/02b_radseq_awk.awk | cat ../ancillary/vcf_header_radseq.txt $header - | bgzip > andersen08_radseq.ws225.vcf.gz
+join -t $'\t' $ws210 41188SNPset.txt | gawk -f ../../scripts/prep/02b_radseq_awk.awk | cat ../ancillary/vcf_header_radseq.txt $header - | bcftools view -O b > andersen08_radseq.ws225.bcf
 
-mv andersen08_radseq.ws225.vcf.gz ../vcf/andersen08_radseq.ws225.vcf.gz
-tabix ../vcf/andersen08_radseq.ws225.vcf.gz
+
+mv andersen08_radseq.ws225.bcf ../vcf/andersen08_radseq.ws225.bcf
+bcftools index ../vcf/andersen08_radseq.ws225.bcf
