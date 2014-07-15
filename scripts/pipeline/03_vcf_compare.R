@@ -107,6 +107,7 @@ get_concordance_matrix <- function(f1, f2) {
   if (Sys.info()["sysname"] == "Darwin") {
     r <- read.csv2(pipe(sprintf("echo %s | xargs -t -I \'{}\' -n 1 -P 20 sh -c \"bcftools gtcheck -s {} -G 1 -g %s %s | sed \'s/$/\t{}/\'\" | egrep -v \'#\' ", paste0(joint_samples, collapse=" "), f1, f2)), as.is=T, sep='\t',header=F, col.names= c("CN","Discordance_total", "Discordance_per_site", "Number_of_Sites", "Sample", "Sample_ID", "Query"))
   } else {
+    save(list = ls(all = TRUE), file= paste0(results_dir, "data2.Rdata"))
     system(sprintf("echo -n %s | xargs -d \' \' -t -I \'{}\' -n 1 -P 20 sh -c \"bcftools gtcheck -s {} -G 1 -g %s %s | sed \'s/$/\t{}/\' | egrep -v \'#\' > '%s{}.CN.txt'\"", paste0(f2_samples, collapse=" "), f1, f2, results_dir))
     r <- lapply(f2_samples, function(x) {
       read.table(sprintf("%s%s.CN.txt", results_dir,x),as.is=T, sep='\t',header=F, col.names= c("CN","Discordance_total", "Discordance_per_site", "Number_of_Sites", "Sample", "Sample_ID", "Query"))
@@ -141,6 +142,7 @@ concordance_chart <- function(record, union=F) {
   ggplot() +
     geom_tile(data=record, aes(x=Query, y=Sample, fill=Concordance), colour = "white") + 
     geom_tile(data=record, aes(x=Query, y=Sample, fill=Concordance), colour = "white") + 
+    geom_text(data=record, aes(x=Query, y=Sample, label=format(Concordance*100,digits=3)), colour = "white") + 
     #geom_tile(data=SM_set, aes(x=Sample, y=Sample, fill=Average.Discordance.Number.of.sites), colour = "white") +
     labs(title=plot_title, y=str_split(record[1,'Comparison'],"__")[[1]][1], x=str_split(record[1,'Comparison'],"__")[[1]][2]) +
     scale_fill_gradient(low="#FFE900", high="#0092FF", space="Lab") +
@@ -184,7 +186,7 @@ Cap <- function(x) {
         sep="", collapse=" ")
 }
 
-cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#A1887F", "#FFB300", "#0080ff","#0080ff", "#408000")
+cbPalette <- rep(c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#A1887F", "#FFB300", "#0080ff","#0080ff", "#408000"), 5)
 
 lapply( names(snp_indel)[names(snp_indel) != "id"] , function(i) {
   ggplot(snp_indel) + 
@@ -251,15 +253,12 @@ con_comb$Depth <- as.integer(str_match(con_comb$Comparison,"d([0-9]+)")[,2])
 ggplot(con_comb) +
   geom_line(position="identity",aes(y=Concordance, x=con_comb$Sample , color=Comparison, group=Comparison)) + 
   geom_point(position="identity",aes(y=Concordance, x=con_comb$Sample , color=Comparison, group=Comparison)) +
-  scale_fill_discrete(labels=fix_labels) +
-  labs(title=sprintf("Concordance by Strain: %s vs %s ", args[2], args[3]), x="Sample Name", y="Concordance (%)") +
+  labs(title="Concordance by Strain", x="Sample Name", y="Concordance (%)") +
   theme(legend.position="right", axis.text.x = element_text(angle = 90, hjust = 1))
 
 ggsave(filename = paste0(results_dir, "individual_concordance.png"), width=10)
 
-## Pairwise Concordance Grid
-lapply(concordance_results, function(x) { concordance_chart(x) })
-lapply(concordance_results, function(x) { concordance_chart(x, union=T) })
+
 
 # Fix up df of con_comb.
 con_comb <- group_by(con_comb, Comparison, Sample)
@@ -291,7 +290,7 @@ ggplot(qual_set) +
   stat_summary(fun.y=mean, mapping = aes(x=QUAL, group="Comparison", y = con_comb$Concordance), geom="line", size = 2) +
   labs(title=sprintf("%s vs %s filtered by quality",args[2], args[3]), x="Quality", y="Concordance (%)") +
   theme(legend.position="right", legend.position="top", axis.text.x = element_text(hjust = 1)) +
-  scale_x_continuous(breaks=unique(con_comb$QUAL)) +
+  scale_x_continuous(breaks=unique(qual_set$QUAL)) +
   ggsave(filename = paste0(results_dir, "stratified_concordance_QUAL.png"), width=14)
 }
 
@@ -307,12 +306,14 @@ if (length(is.na(con_comb$Depth)[is.na(con_comb$Depth)==F]) > 0) {
     stat_summary(fun.y=mean, mapping = aes(x=Depth, group="Comparison", y = con_comb$Concordance), geom="line", size = 2) +
     labs(title=sprintf("%s vs %s filtered by quality",args[2], args[3]), x="Depth", y="Concordance (%)") +
     theme(legend.position="right", legend.position="top", axis.text.x = element_text(hjust = 1)) +
-    scale_x_continuous(breaks=c(10,20,30,40,seq(50,60,by=1),seq(70,200,10)),
-                       minor_breaks=seq(50,60,by=1)) +
+    scale_x_continuous(breaks=unique(depth_set$Depth)) +
     ggsave(filename = paste0(results_dir, "stratified_concordance_Depth.png"), width=14)
 }
 
-
+## Pairwise Concordance Grid
+#lapply(concordance_results, function(x) { concordance_chart(x) })
+# Pairwise Concordance Charts
+lapply(concordance_results, function(x) { concordance_chart(x, union=T) })
 
 ## Save Data Again
 save(list = ls(all = TRUE), file= paste0(results_dir, "data.Rdata"))
