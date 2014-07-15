@@ -244,11 +244,15 @@ con_comb <- filter(con_comb, Query == Sample) %.%
   mutate(sample_count=length(Sample)) %.%
   arrange(Comparison)
 
+con_comb$QUAL <- as.integer(str_match(con_comb$Comparison,"Q([0-9]+)")[,2])
+con_comb$Depth <- as.integer(str_match(con_comb$Comparison,"d([0-9]+)")[,2])
+
 # Plot concordance of individual strains
 ggplot(con_comb) +
   geom_line(position="identity",aes(y=Concordance, x=con_comb$Sample , color=Comparison, group=Comparison)) + 
   geom_point(position="identity",aes(y=Concordance, x=con_comb$Sample , color=Comparison, group=Comparison)) +
-  labs(title="Concordance by Strain", x="Sample Name", y="Concordance (%)") +
+  scale_fill_discrete(labels=fix_labels) +
+  labs(title=sprintf("Concordance by Strain: %s vs %s ", args[2], args[3]), x="Sample Name", y="Concordance (%)") +
   theme(legend.position="right", axis.text.x = element_text(angle = 90, hjust = 1))
 
 ggsave(filename = paste0(results_dir, "individual_concordance.png"), width=10)
@@ -265,8 +269,7 @@ fix_labels <- function(x) {
   sub(".bcf","",str_split_fixed(x,"__",2)[,2])
 }
 
-
-## Plot Concordance by file; compared with the the first vcf input.
+# Stratified Concordance
 ggplot(con_comb) +
   geom_line(position="identity",aes(x=Comparison, y=Concordance , color=Sample, group=Sample), alpha=0.5) +
   stat_summary(fun.y=mean, mapping = aes(x=con_comb$Comparison, group="Comparison", y = con_comb$Concordance), geom="line", size = 2) +
@@ -274,7 +277,43 @@ ggplot(con_comb) +
   theme(legend.position="right", legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1, )) +
   scale_x_discrete(labels=fix_labels) +
   ggsave(filename = paste0(results_dir, "stratified_concordance.png"), width=14)
-       
-       ## Save Data Again
-       save(list = ls(all = TRUE), file= paste0(results_dir, "data.Rdata"))
-       
+
+
+# Plot QUAL
+if (length(is.na(con_comb$QUAL)[is.na(con_comb$QUAL)==F]) > 0) {
+# Plot QUAL if possible.
+qual_set <- con_comb
+qual_set$QUAL[is.na(con_comb$QUAL) == T] <- 0
+## Plot Qualities within range compared with the the first vcf input.
+ggplot(qual_set) +
+  geom_line(position="identity",aes(x=QUAL, y=Concordance , color=Sample, group=Sample), alpha=0.5) +
+  geom_point(position="identity",aes(x=QUAL, y=Concordance , color=Sample, group=Sample), alpha=0.5) +
+  stat_summary(fun.y=mean, mapping = aes(x=QUAL, group="Comparison", y = con_comb$Concordance), geom="line", size = 2) +
+  labs(title=sprintf("%s vs %s filtered by quality",args[2], args[3]), x="Quality", y="Concordance (%)") +
+  theme(legend.position="right", legend.position="top", axis.text.x = element_text(hjust = 1)) +
+  scale_x_continuous(breaks=unique(con_comb$QUAL)) +
+  ggsave(filename = paste0(results_dir, "stratified_concordance_QUAL.png"), width=14)
+}
+
+# Plot DEPTH
+if (length(is.na(con_comb$Depth)[is.na(con_comb$Depth)==F]) > 0) {
+  # Plot QUAL if possible.
+  depth_set <- con_comb
+  depth_set$Depth[is.na(con_comb$Depth) == T] <- NA
+  ## Plot Qualities within range compared with the the first vcf input.
+  ggplot(depth_set) +
+    geom_line(position="identity",aes(x=Depth, y=Concordance , color=Sample, group=Sample), alpha=0.5) +
+    geom_point(position="identity",aes(x=Depth, y=Concordance , color=Sample, group=Sample), alpha=0.5) +
+    stat_summary(fun.y=mean, mapping = aes(x=Depth, group="Comparison", y = con_comb$Concordance), geom="line", size = 2) +
+    labs(title=sprintf("%s vs %s filtered by quality",args[2], args[3]), x="Depth", y="Concordance (%)") +
+    theme(legend.position="right", legend.position="top", axis.text.x = element_text(hjust = 1)) +
+    scale_x_continuous(breaks=c(10,20,30,40,seq(50,60,by=1),seq(70,200,10)),
+                       minor_breaks=seq(50,60,by=1)) +
+    ggsave(filename = paste0(results_dir, "stratified_concordance_Depth.png"), width=14)
+}
+
+
+
+## Save Data Again
+save(list = ls(all = TRUE), file= paste0(results_dir, "data.Rdata"))
+
