@@ -63,10 +63,11 @@ repl_multiple <- function(string, replacements) {
 replace_words = c(".vcf.gz",".txt", "../../data/vcf/",".bcf")
 
 
-#=======================#
-# Get VCF Results       #
-#=======================#
+#=================#
+# Fetch Data      #
+#=================#
 
+# Get individual VCF Stats
 get_vcf_stats <- function(f) {
   # This function retrieves comparison data for
   # each VCF.
@@ -91,17 +92,21 @@ get_vcf_stats <- function(f) {
   list(SN=SN, QUAL=QUAL, PSC=PSC)
 }
 
-#=============================#
-# Get Concordance Matrix      #
-#=============================#
-
+# Get concordance results
 get_concordance_matrix <- function(f1, f2) {
   # Get sample names from each file
   f1_samples <- unlist(str_split(system(sprintf("bcftools view -h %s| grep '#CHROM' | cut -f '10-'",f1), intern=T),'\t'))
   f2_samples <- unlist(str_split(system(sprintf("bcftools view -h %s| grep '#CHROM' | cut -f '10-'",f2), intern=T),'\t'))
   
-
-  # Retrieve Concordance Data
+  
+  # Retrieve Intersection & Absolute Counts.
+  tmp <- tempfile()
+  system(sprintf('bcftools stats -c both -s -  %s %s > %s', f1, f2, tmp))
+  SN  <- import_table("SN", tmp)
+  
+  SN <- reshape(SN, direction="wide", timevar=c("key"), ids=c("id"))
+  names(SN) <- make.names(gsub("value.","",gsub(":","", names(SN))))
+  
   
   # Local Version [MAC]
   if (Sys.info()["sysname"] == "Darwin") {
@@ -111,7 +116,7 @@ get_concordance_matrix <- function(f1, f2) {
     system(sprintf("echo -n %s | xargs -d \' \' -t -I \'{}\' -n 1 -P 20 sh -c \"bcftools gtcheck -s {} -G 1 -g %s %s | sed \'s/$/\t{}/\' | egrep -v \'#\' > '%s{}.CN.txt'\"", paste0(f2_samples, collapse=" "), f1, f2, results_dir))
     r <- lapply(f2_samples, function(x) {
       read.table(sprintf("%s%s.CN.txt", results_dir,x),as.is=T, sep='\t',header=F, col.names= c("CN","Discordance_total", "Discordance_per_site", "Number_of_Sites", "Sample", "Sample_ID", "Query"))
-      })
+    })
     r <- do.call("rbind", r)
   }
   
@@ -120,17 +125,24 @@ get_concordance_matrix <- function(f1, f2) {
   # Fix numbers
   r$Discordance_total <- as.integer(r$Discordance_total)
   r$Number_of_Sites <- as.integer(r$Number_of_Sites)
+  r$isec_sites <- SN[,"number.of.SNPs"][3]
+  r$f1_sites <- SN[,"number.of.SNPs"][1]
+  r$f2_sites <- SN[,"number.of.SNPs"][2]
   r$Discordance_per_site <- NULL
   r$Comparison <- sprintf('%s__%s', repl_multiple(f1, replace_words), repl_multiple(f2, replace_words))
   
   # Add in Concordance Rate
   r$Concordance <- as.numeric((r$Number_of_Sites - r$Discordance_total) / r$Number_of_Sites)
+  r$Union_Concordance <- as.numeric(r$Number_of_Sites - r$Discordance_total) / sum(SN[,"number.of.SNPs"])
+  SNP_counts <- SN[,"number.of.SNPs"]
   r
 }
 
+#========#
+# Charts #
+#========#
+
 concordance_chart <- function(record, union=F) {
-  # Plots concordance. 
-  
   # Use to subset records in common
   if (union==T) {
     record <- filter(record, Sample %in% Query & Query%in%Sample)
@@ -150,6 +162,34 @@ concordance_chart <- function(record, union=F) {
   ggsave(filename = paste0(results_dir, plot_title, ".png", collapse=""), height=20, width=15+length(args))
 }
 
+
+venn <- function(t="SNP") {
+  grid.newpage()
+  venn.plot <- draw.pairwise.venn(area1        = sum(complete.cases(jvcf[TYPE == t ,c("REF.x"), with = F])),
+                                  area2        = sum(complete.cases(jvcf[TYPE == t,c("REF.y"), with = F])),
+                                  cross.area   = sum(complete.cases(jvcf[TYPE == t,c("REF.x","REF.y"), with = F])),
+                                  scaled       = T,
+                                  category     = str_replace_all(c(f1, f2), c("(.vcf|.gz|.txt|.bcf)"),""),
+                                  fill         = c("blue", "red"),
+                                  alpha        = 0.3,
+                                  lty          = "blank",
+                                  cex          = 2,
+                                  cat.cex      = 1.5,
+                                  cat.pos      = c(0, 0),
+                                  cat.dist     = 0.05,
+                                  # cat.just     = list(c(-1, -1), c(1, 1)),
+                                  ext.pos      = 20,
+                                  ext.dist     = -0.05,
+                                  ext.length   = 0.85,
+                                  ext.line.lwd = 5,
+                                  ext.line.lty = "dashed")
+  grid.draw(venn.plot)
+}
+
+
+#========#
+# Start  #
+#========#
 
 args <- sprintf("%s", commandArgs(trailingOnly = TRUE))
 setwd("../../data/vcf/")
@@ -258,6 +298,14 @@ ggplot(con_comb) +
 
 ggsave(filename = paste0(results_dir, "individual_concordance.png"), width=10)
 
+ggplot(con_comb) +
+  geom_line(position="identity",aes(y=Union_Concordance, x=con_comb$Sample , color=Comparison, group=Comparison)) + 
+  geom_point(position="identity",aes(y=Union_Concordance, x=con_comb$Sample , color=Comparison, group=Comparison)) +
+  labs(title="Concordance by Strain", x="Sample Name", y="Concordance (%)") +
+  theme(legend.position="right", axis.text.x = element_text(angle = 90, hjust = 1))
+
+ggsave(filename = paste0(results_dir, "individual_concordance_union.png"), width=10)
+
 
 
 # Fix up df of con_comb.
@@ -268,47 +316,50 @@ fix_labels <- function(x) {
   sub(".bcf","",str_split_fixed(x,"__",2)[,2])
 }
 
-# Stratified Concordance
-ggplot(con_comb) +
-  geom_line(position="identity",aes(x=Comparison, y=Concordance , color=Sample, group=Sample), alpha=0.5) +
-  stat_summary(fun.y=mean, mapping = aes(x=con_comb$Comparison, group="Comparison", y = con_comb$Concordance), geom="line", size = 2) +
-  labs(title=sprintf("%s vs:Concordance by Strain",args[2]), x="Sample Name", y="Concordance (%)") +
-  theme(legend.position="right", legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1, )) +
-  scale_x_discrete(labels=fix_labels) +
-  ggsave(filename = paste0(results_dir, "stratified_concordance.png"), width=14)
+  
+  # Stratified Concordance
+  ggplot(con_comb) +
+    geom_line(position="identity",aes(x=Comparison, y=con_comb$Union_Concordance , color=Sample, group=Sample), alpha=0.5) +
+    stat_summary(fun.y=mean, mapping = aes(x=con_comb$Comparison, group="Comparison", y = con_comb$Union_Concordance), geom="line", size = 2) +
+    labs(title=sprintf("%s vs:Concordance by Strain",args[2]), x="Sample Name", y="Concordance (%)") +
+    theme(legend.position="right", legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1, )) +
+    scale_x_discrete(labels=fix_labels) +
+    ggsave(filename = paste0(results_dir, "stratified_concordance_union.png"), width=14)
+  
+  
+  # Plot QUAL
+  if (length(is.na(con_comb$QUAL)[is.na(con_comb$QUAL)==F]) > 0) {
+    # Plot QUAL if possible.
+    qual_set <- con_comb
+    qual_set$QUAL[is.na(con_comb$QUAL) == T] <- 0
+    ## Plot Qualities within range compared with the the first vcf input.
+    ggplot(qual_set) +
+      geom_line(position="identity",aes(x=QUAL, y=con_comb$Union_Concordance , color=Sample, group=Sample), alpha=0.5) +
+      geom_point(position="identity",aes(x=QUAL, y=con_comb$Union_Concordance , color=Sample, group=Sample), alpha=0.5) +
+      stat_summary(fun.y=mean, mapping = aes(x=QUAL, group="Comparison", y = con_comb$Union_Concordance), geom="line", size = 2) +
+      labs(title=sprintf("%s vs %s filtered by quality",args[2], args[3]), x="Quality", y="Concordance (%)") +
+      theme(legend.position="right", legend.position="top", axis.text.x = element_text(hjust = 1)) +
+      scale_x_continuous(breaks=unique(qual_set$QUAL)) +
+      ggsave(filename = paste0(results_dir, "stratified_concordance_QUAL_union.png"), width=14)
+  }
+  
+  # Plot DEPTH
+  if (length(is.na(con_comb$Depth)[is.na(con_comb$Depth)==F]) > 0) {
+    # Plot QUAL if possible.
+    depth_set <- con_comb
+    depth_set$Depth[is.na(con_comb$Depth) == T] <- NA
+    ## Plot Qualities within range compared with the the first vcf input.
+    ggplot(depth_set) +
+      geom_line(position="identity",aes(x=Depth, y=con_comb$Union_Concordance , color=Sample, group=Sample), alpha=0.5) +
+      geom_point(position="identity",aes(x=Depth, y=con_comb$Union_Concordance , color=Sample, group=Sample), alpha=0.5) +
+      stat_summary(fun.y=mean, mapping = aes(x=Depth, group="Comparison", y = con_comb$Union_Concordance), geom="line", size = 2) +
+      labs(title=sprintf("%s vs %s filtered by quality",args[2], args[3]), x="Depth", y="Concordance (%)") +
+      theme(legend.position="right", legend.position="top", axis.text.x = element_text(hjust = 1)) +
+      scale_x_continuous(breaks=unique(depth_set$Depth)) +
+      ggsave(filename = paste0(results_dir, "stratified_concordance_Depth_union.png"), width=14)
+  }
+  
 
-
-# Plot QUAL
-if (length(is.na(con_comb$QUAL)[is.na(con_comb$QUAL)==F]) > 0) {
-# Plot QUAL if possible.
-qual_set <- con_comb
-qual_set$QUAL[is.na(con_comb$QUAL) == T] <- 0
-## Plot Qualities within range compared with the the first vcf input.
-ggplot(qual_set) +
-  geom_line(position="identity",aes(x=QUAL, y=Concordance , color=Sample, group=Sample), alpha=0.5) +
-  geom_point(position="identity",aes(x=QUAL, y=Concordance , color=Sample, group=Sample), alpha=0.5) +
-  stat_summary(fun.y=mean, mapping = aes(x=QUAL, group="Comparison", y = con_comb$Concordance), geom="line", size = 2) +
-  labs(title=sprintf("%s vs %s filtered by quality",args[2], args[3]), x="Quality", y="Concordance (%)") +
-  theme(legend.position="right", legend.position="top", axis.text.x = element_text(hjust = 1)) +
-  scale_x_continuous(breaks=unique(qual_set$QUAL)) +
-  ggsave(filename = paste0(results_dir, "stratified_concordance_QUAL.png"), width=14)
-}
-
-# Plot DEPTH
-if (length(is.na(con_comb$Depth)[is.na(con_comb$Depth)==F]) > 0) {
-  # Plot QUAL if possible.
-  depth_set <- con_comb
-  depth_set$Depth[is.na(con_comb$Depth) == T] <- NA
-  ## Plot Qualities within range compared with the the first vcf input.
-  ggplot(depth_set) +
-    geom_line(position="identity",aes(x=Depth, y=Concordance , color=Sample, group=Sample), alpha=0.5) +
-    geom_point(position="identity",aes(x=Depth, y=Concordance , color=Sample, group=Sample), alpha=0.5) +
-    stat_summary(fun.y=mean, mapping = aes(x=Depth, group="Comparison", y = con_comb$Concordance), geom="line", size = 2) +
-    labs(title=sprintf("%s vs %s filtered by quality",args[2], args[3]), x="Depth", y="Concordance (%)") +
-    theme(legend.position="right", legend.position="top", axis.text.x = element_text(hjust = 1)) +
-    scale_x_continuous(breaks=unique(depth_set$Depth)) +
-    ggsave(filename = paste0(results_dir, "stratified_concordance_Depth.png"), width=14)
-}
 
 ## Pairwise Concordance Grid
 #lapply(concordance_results, function(x) { concordance_chart(x) })

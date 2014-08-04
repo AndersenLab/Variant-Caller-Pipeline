@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd /Volumes/PortusTutus/Raw/FASTQ_MMP/fq
+cd /Volumes/PortusTutus/Raw/SRA_FASTQ_MMP/fq
 
 # Fetch Run Numbers
 
