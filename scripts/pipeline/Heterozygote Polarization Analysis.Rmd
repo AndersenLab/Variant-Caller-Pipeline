@@ -54,7 +54,7 @@ change_to_REF <- rowSums(h[,c(-1,-2-length(h)-1,-length(h))] < 0)
 
 
 ggplot(h) +
-      geom_histogram(aes(x=POS, fill="Purple"), binwidth=10000) +
+      geom_histogram(aes(x=POS, fill="Purple"), binwidth=1000000) +
       facet_grid(~CHROM, scales="free_x", space="free_x", margins=F)  +
       scale_x_continuous(labels = genetic_scale) +
       theme_bw() +
@@ -62,7 +62,7 @@ ggplot(h) +
 
 
 ggplot(h[total_het != 0,]) +
-      geom_histogram(aes(x=POS, fill="Green"), binwidth=10000) +
+      geom_histogram(aes(x=POS, fill="Green"), binwidth=100000) +
       facet_grid(~CHROM, scales="free_x", space="free_x", margins=F)  +
       scale_x_continuous(labels = genetic_scale) +
       theme_bw() +
@@ -70,14 +70,14 @@ ggplot(h[total_het != 0,]) +
 
 
 ggplot(h[change_to_ALT != 0,]) +
-      geom_histogram(aes(x=POS, fill="Blue"), binwidth=10000) +
+      geom_histogram(aes(x=POS, fill="Blue"), binwidth=100000) +
       facet_grid(~CHROM, scales="free_x", space="free_x", margins=F)  +
       scale_x_continuous(labels = genetic_scale) +
       theme_bw() +
       labs(title = "PL(ALT) > PL(REF) ", y="Frequency",x="Position")
 
 ggplot(h[change_to_REF != 0,]) +
-      geom_histogram(aes(x=POS, fill="Red"), binwidth=10000) +
+      geom_histogram(aes(x=POS, fill="Red"), binwidth=100000) +
       facet_grid(~CHROM, scales="free_x", space="free_x", margins=F)  +
       scale_x_continuous(labels = genetic_scale) +
       theme_bw() +
