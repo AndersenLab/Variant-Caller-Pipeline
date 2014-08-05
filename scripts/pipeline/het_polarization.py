@@ -6,7 +6,6 @@ bcftools view <filename> | head -n 500 | python het_polarization.py  | bcftools 
 '''
 
 import sys
-import pandas as pd
 
 log = open("het_polarization_log.txt",'w')
 
@@ -32,19 +31,18 @@ def main():
                 if v.startswith("0/1"):
                     PL_set = [int(i) for i in v.split(":")[PL].split(",")]
                     if (PL_set[0] - PL_set[2]) > PL_diff:
-                        het_set.append(-1)
                         l[k+9] = v.replace("0/1","0/0")
                     elif (PL_set[2] - PL_set[0]) > PL_diff:
-                        het_set.append(1)
                         l[k+9] = v.replace("0/1","1/1")
                     else:
-                        het_set.append(9) # Not different enough.
+                        pass
+                    het_set.append((PL_set[2] - PL_set[0]))
                 else:
                     het_set.append(0)
             sys.stdout.write("\t".join(l))
             log.write("\t".join(map(str,het_set)) + "\n")
         else:
-            het_set.append('\t'.join(len(samples)*['0']))
+            het_set.append(l[0:l.index("\t",l.index("\t")+1)] + '\t'.join((1+len(samples))*['0']))
             sys.stdout.write(l)
             log.write("\t".join(map(str,het_set)) + "\n")
 
