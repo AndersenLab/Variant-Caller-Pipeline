@@ -32,7 +32,8 @@ for ele in fasta_sets:
 	if (ele[0].split("-")[0:3] == ele[1].split("-")[0:3]) == False:
 		sys.exit("Error: Fastqs do not line up.")
 	# Check if bam exists
-	bam_name = "-".join(ele[0].split("-")[0:4] + [ele[1].split("-")[3]]) + ".bam"
+	bam_name = "-".join(ele[0].split("-")[0:3] + [sys.argv[1].split("/")[-1].replace(".fa","")] + [ele[0].split("-")[3]]  +  [ele[1].split("-")[3]]) + ".bam"
+	print bam_name
 	if os.path.isfile(bam_name) == False:
 		align_fqs.append(ele)
 
@@ -48,5 +49,7 @@ else:
 os.chdir(orig_dir)
 
 # Submit align commands
+stagger = 0
 for f in align_fqs:
-	os.system("sbatch 00_align_paired.sh %s %s" % (f[0], f[1]))
+	os.system("sbatch --begin=now+%s 00_align_paired.sh %s %s %s" % (stagger, f[0], f[1], sys.argv[1]))
+	stagger += 25

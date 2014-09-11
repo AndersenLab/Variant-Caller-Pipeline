@@ -46,14 +46,14 @@ filter_set = []
 if "-d" in options:
 	d_option = options[options.index("-d") + 1]
 	if d_option == "avg2":
-		threshold = float(os.popen("bcftools query -f '%%DP\\n' %s | awk '{ total += $1; count++ } END { avg=(total/count);  print (avg + 3*sqrt(avg)) }'" % vcf).read())
+		threshold = int(float(os.popen("bcftools query -f '%%DP\\n' %s | awk '{ total += $1; count++ } END { avg=(total/count);  print (avg + 3*sqrt(avg)) }'" % vcf).read().strip()))
 	elif d_option == "avg3":
-		threshold = float(os.popen("bcftools query -f '%%DP\\n' %s | awk '{ total += $1; count++ } END { avg=(total/count);  print (avg + 2*sqrt(avg)) }'" % vcf).read())
+		threshold = int(float(os.popen("bcftools query -f '%%DP\\n' %s | awk '{ total += $1; count++ } END { avg=(total/count);  print (avg + 2*sqrt(avg)) }'" % vcf).read().strip()))
 	else:
-		threshold = d_option
+		threshold = int(d_option)
 	# Set up depth filter
-		filter_set.append("bcftools filter --include 'DP<%s' " % (threshold))
-	d_file = ".d%04d" % int(threshold)
+	filter_set.append("bcftools filter -O b --include 'DP<%s' " % (threshold))
+	d_file = ".d%04d" % (threshold)
 else:
 	d_file = ""
 

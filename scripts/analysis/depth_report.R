@@ -2,31 +2,24 @@
 
 library(ggplot2)
 library(reshape2)
+library(stringr)
+# Split out variables
 
-#setwd("/Users/dancook/Documents/Spring_Rotation/Variant-Caller-Pipeline/data/vcf/")
+bam_depth <- read.delim("~/Documents/Spring_Rotation/Variant-Caller-Pipeline/data/ancillary/bam_depth.txt")
+bam_depth[,c("Run","Library","Strain","hash")] <- str_split_fixed(bam_depth$bam, "-", n=4)
 
-#vcfs <-  sprintf("%s", commandArgs(trailingOnly = TRUE))
+# Box Plot of depths
+bam_depth <- group_by(bam_depth, Strain) %>%
+  summarise(cum_depth=sum(avg_depth))
 
-vcfs = c("00_all_bams.txt.vcf.gz", "00_all_bams.txt.Q40.vcf.gz", "01a_BGI1_set.txt.Q40.vcf.gz", "01b_BGI2_set.txt.Q40.vcf.gz", "01c_BGI3_set.txt.Q40.vcf.gz")
+# Plot cumulative Depth
+ggplot(bam_depth) +
+  geom_boxplot(aes(x="Cumulative Depth", y =cum_depth)) +
+  theme_bw() +
+  labs(x="", y="Whole Genome Sequencing Depth")
 
-#vcfs = c("03_RET2a.txt.Q40.vcf.gz", "03_RET2b.txt.Q40.vcf.gz")
-
-
-d <- lapply(vcfs, function(v) { cbind("vcf"=v, "depth"= as.numeric(system(sprintf("gunzip -kfc %s | egrep -o 'DP=[0-9]*' | sed -e 's/DP=//g' ", v), intern=T))) })
-names(d) <- vcfs
-d <- as.data.frame(do.call("rbind",d))
-d$depth <- as.numeric(d$depth)
-
-d <- group_by(d, vcf) %.%
-      mutate(mean_depth=mean(depth)) %.%
-      mutate(d_plus_2sqrt_d=mean_depth + (2*sqrt(mean_depth))) %.%
-      mutate(d_plus_3sqrt_d=mean_depth + (3*sqrt(mean_depth)))
-
-ggplot(d, aes(x=depth, color = vcf)) + 
-  stat_ecdf() + 
-  labs(title="Cumulative Distribution Frequences" ) +
-  geom_vline(aes(xintercept=d_plus_2sqrt_d, color=vcf, linetype = "longdash")) +
-  geom_vline(aes(xintercept=d_plus_3sqrt_d, color=vcf, linetype = "dotted"))
-  
-
-
+ggplot(bam_depth) +
+  geom_line(aes(x=Strain, y=cum_depth, group=1), stat="identity", color="#0080ff", size=2) +
+  labs(y="Cumulative Depth {avg of several sequencing runs}") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, face="bold", hjust=1))

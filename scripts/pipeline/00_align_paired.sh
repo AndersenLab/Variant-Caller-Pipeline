@@ -1,54 +1,123 @@
-#!/usr/bin/python
+#!/bin/bash
 
-# This script assemble the list of fastqs, identify which have yet to be aligned, and align them (producing BAMs)
+#=============#
+# Description #
+#=============#
+#
+# This script will submit a job that:
+#
+# * Aligns, creates bams
+# * Sorts
+# * Indexes
 
-# Example Usage:
-# sh submit_fastq.sh 
+#SBATCH --job-name=bwa
 
-# Prepare necessary libraries
+#SBATCH --output=../log/%j.txt
+#SBATCH --error=../log/%j.out
 
-import glob
-import os
-import sys
+#SBATCH --partition=compute
 
-
-#os.system("prepare bwa")
-#os.system("prepare samtools")
-
-orig_dir = os.getcwd()
-
-# Change to appropriate directory
-os.chdir("../../data/fq")
-fasta_list = glob.glob("*.fq.gz")
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=8
+#SBATCH --nodes=1
+#SBATCH --mem=16384
 
 
-os.chdir("../bam")
+#SBATCH --mail-user=dec@u.northwestern.edu
+#SBATCH --workdir=/lscr2/andersenlab/dec211/data/fq
 
-align_fqs = []
-fasta_sets = zip(sorted([x for x in fasta_list if "-1.fq.gz" in x]), sorted([x for x in fasta_list if "-2.fq.gz" in x]))
-# Check that all fastqs intact, and construct bam list.
-for ele in fasta_sets:
-	# Check that Run, Library, Sample/Strain are all identicle.
-	if (ele[0].split("-")[0:3] == ele[1].split("-")[0:3]) == False:
-		sys.exit("Error: Fastqs do not line up.")
-	# Check if bam exists
-	bam_name = "-".join(ele[0].split("-")[0:5] + [ele[1].split("-")[3]]) + ".bam"
-	if os.path.isfile(bam_name) == False:
-		align_fqs.append(ele)
+BAM_DIR="../bam/"
+PICARD="../../tools/"
 
-# Output to user
-if len(align_fqs) > 0:
-	print "(%s/%s) Not Aligned" % (len(align_fqs),len(fasta_sets))
-	print "Aligning new fastqs:"
-	print '\n'.join(["%-50s %-50s" % (x[0], x[1]) for x in align_fqs])
-else:
-	print "All fastqs are aligned and in Bam format."
+##################
+# Error Checking #
+##################
 
-# Return to original directory
-os.chdir(orig_dir)
 
-# Submit align commands
-stagger = 0
-for f in align_fqs:
-	os.system("sbatch --begin=now+%s 00_align_paired.sh %s %s %s" % (stagger, f[0], f[1], sys.argv[1]))
-	stagger += 500
+# Check to see if bam exists; if yes, abort
+if [ -f "$bam_name" ]
+then
+	echo "Bam File exists; aborting."
+	exit 0
+fi
+
+# Check that both files exist.
+if [ ! -f "$1" ]
+then
+	echo "$1 does not exist; aborting."
+	exit 0
+fi
+
+if [ ! -f "$2" ]
+then
+	echo "$2 does not exist; aborting."
+	exit 0
+fi
+
+# Check that a reference is specified.
+if [ -z "$3" ]
+then
+	echo "No reference defined; aborting."
+	exit 0
+fi
+
+# Double check checksums
+f1_md5=`md5sum $1 |  awk '{print substr($0,0,5)}'`
+f2_md5=`md5sum $2 |  awk '{print substr($0,0,5)}'`
+
+echo "$1 md5 $f1_md5"
+echo "$2 md5 $f2_md5"
+
+if [ "$1" -ne "${f1[3]}" ]; then
+	echo "$1; checksum mismatch."
+	exit 0
+fi
+
+if [ "$2" -ne "${f2[3]}" ]; then
+	echo "$2; checksum mismatch."
+	exit 0
+fi
+
+###############
+# Get FASTQ's #
+###############
+
+# Convert f1 and f2 to arrays
+f1=(${1//-/ })
+f2=(${2//-/ })
+
+echo $1
+echo $2
+
+# Set reference
+ref=${3##*/}
+
+bam_name=${BAM_DIR}${f1[0]}-${f1[1]}-${f1[2]}-${ref%.fa}-${f1[3]}-${f2[3]}.bam
+
+bwa mem -t 8 ../reference/${3} ${1} ${2} | samtools view -b -S -h -  > ${BAM_DIR}${f1[3]}-${f2[3]}.tmp.bam
+
+## Replace Header & Sort Simultaneously!
+java	-jar	${PICARD}AddOrReplaceReadGroups.jar	\
+I=${BAM_DIR}${f1[3]}-${f2[3]}.tmp.bam	\
+O=${BAM_DIR}${f1[3]}-${f2[3]}.tmp.sorted.bam	\
+RGID=`basename ${bam_name}`	RGLB=${f1[1]}	\
+RGPL=ILLUMINA RGPU=${f1[1]} \
+RGSM=${f1[2]}	RGCN=BGI \
+SO=coordinate
+
+## Mark Duplicates
+java -jar ${PICARD}MarkDuplicates.jar \
+I=${BAM_DIR}${f1[3]}-${f2[3]}.tmp.sorted.bam \
+O=${bam_name} \
+M=${bam_name}.duplicate_report.txt \
+VALIDATION_STRINGENCY=SILENT \
+REMOVE_DUPLICATES=false
+
+# Remove temp
+rm ${BAM_DIR}${f1[3]}-${f2[3]}.tmp.bam ${BAM_DIR}${f1[3]}-${f2[3]}.tmp.sorted.bam
+
+
+# Index Bams
+samtools index $bam_name
+

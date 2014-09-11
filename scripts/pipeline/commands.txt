@@ -1,3 +1,13 @@
+# calling variants
+
+sbatch 01_mpileup.py 00_ALL_m_full.txt
+sbatch 01_mpileup_c.py 00_ALL_c_full.txt
+
+
+
+# Merge Bams
+samtools merge -c -p `ls *.bam | grep -v "ANDERSEN_WGS_2014.bam"` ANDERSEN_WGS_2014_2.bam
+
 # Compare WGS, Radseq, and MMP strains
 prepare samtools
 sbatch 03_vcf_compare.R wgs_radseq 00_all_bams.txt.vcf.gz andersen08_radseq.ws225.vcf.gz

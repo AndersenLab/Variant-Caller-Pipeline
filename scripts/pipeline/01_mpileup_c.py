@@ -54,8 +54,8 @@ f.flush()
 os.chdir("../bam")
 
 # Split~ Chr 3 + Chr 5 for testing.
-os.system("cat ../ancillary/chr_ranges.txt | xargs -I {} -n 1 -P 12 --verbose sh -c 'samtools mpileup -t DP,DV,DP4,SP -g -D -f ../reference/ce10/ce10.fa -r {} %s | bcftools call --format-fields GQ,GP -c -v > ../vcf/raw.%s.{}.bcf'" % (' '.join(fasta_list),  outfile))
-os.system("cat ../ancillary/chr_ranges.txt | bcftools concat -O b `ls -v ../vcf/raw.%s.*.bcf` > ../vcf/%s.bcf" % (outfile , outfile.replace(".txt","")))
+os.system("cat ../ancillary/chr_ranges_full.txt | xargs -I {} -n 1 -P 12 --verbose sh -c 'samtools mpileup -t DP,DV,DP4,SP -g -D -f ../reference/ce10/ce10.fa -r {} %s | bcftools call --format-fields GQ,GP -c -v > ../vcf/raw.%s.{}.bcf'" % (' '.join(fasta_list),  outfile))
+os.system("cat ../ancillary/chr_ranges_full.txt | bcftools concat -O b `ls -v ../vcf/raw.%s.*.bcf` > ../vcf/%s.bcf" % (outfile , outfile.replace(".txt","")))
 
 # Index
 os.system("bcftools index -f ../vcf/%s.bcf" % outfile.replace(".txt",""))
