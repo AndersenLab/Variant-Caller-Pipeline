@@ -176,14 +176,29 @@ for fastq_set in fastq_pairs:
 	sample_SM = split_bam_name[2]
 	readgroup = '@RG\\tID:%s\\tLB:%s\\tSM:%s\\tPL:ILLUMINA' % (bam_name, library_LB, sample_SM)
 
-	# Align, remove duplicates, and output as a bam, with header, 
-	#os.system("bwa mem -t %s -R \"%s\" %s %s %s | samtools view -b -S -h -@ 2 -  > %s.tmp.bam" % (system_cores[system_type], readgroup, reference_loc, fastq_set[0], fastq_set[1],bam_name))
-
+	# Align, add read-group (@RG) header line, and output as a bam.
+	print("bwa mem -t %s -R \"%s\" %s %s %s | samtools view -b -S -h -@ 2 -  > %s.tmp.bam" % (system_cores[system_type], readgroup, reference_loc, fastq_set[0], fastq_set[1],bam_name))
+	print "samtools sort -O bam -T sorting -@ %s > %s.tmp.sorted.bam" % (system_cores[system_type], bam_name)
 	# Save Summary Stats
-	os.system("samtools stats %s | grep '^SN'" % bam_name)
-	samtools_stats = subprocess.check_output( samtools_stats, shell=True )
-	for line in [x.split('\t')[1:3] for x in samtools_stats.split("\n")[:-1]]:
-		store_eav("BAM Statistics", bam_name, line[0].replace(":",""), line[1])
+	#os.system("samtools stats %s | grep '^SN'" % bam_name)
+	#samtools_stats = subprocess.check_output( samtools_stats, shell=True )
+
+	## Mark Duplicates
+	remove_duplicates = """java -jar MarkDuplicates.jar \
+	I=%s.tmp.sorted.bam \
+	O=%s.bam \
+	M=${bam_name}.duplicate_report.txt \
+	VALIDATION_STRINGENCY=SILENT \
+	REMOVE_DUPLICATES=true"""
+
+
+	# Store Bam Statistics
+	#for line in [x.split('\t')[1:3] for x in samtools_stats.split("\n")[:-1]]:
+	#	store_eav("BAM Statistics", bam_name, line[0].replace(":","").title(), line[1])
+
+	# Generate md5 of bam and store
+	#md5 = subprocess.check_output("%s %s.bam" % (md5_system[system_type], bam_name)
+	#m = re.match('MD5 \((.*)\) = (.*)', md5)
 
 	samtools_stats = """SN	raw total sequences:	1741156
 SN	filtered sequences:	0
