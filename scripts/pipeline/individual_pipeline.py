@@ -177,19 +177,22 @@ for fastq_set in fastq_pairs:
 	readgroup = '@RG\\tID:%s\\tLB:%s\\tSM:%s\\tPL:ILLUMINA' % (bam_name, library_LB, sample_SM)
 
 	# Align, add read-group (@RG) header line, and output as a bam.
-	print("bwa mem -t %s -R \"%s\" %s %s %s | samtools view -b -S -h -@ 2 -  > %s.tmp.bam" % (system_cores[system_type], readgroup, reference_loc, fastq_set[0], fastq_set[1],bam_name))
-	print "samtools sort -O bam -T sorting -@ %s > %s.tmp.sorted.bam" % (system_cores[system_type], bam_name)
+	print("bwa mem -M -t %s -R \"%s\" %s %s %s | samtools view -b -S -h -@ 2 -  > %s.tmp.bam" % (system_cores[system_type], readgroup, reference_loc, fastq_set[0], fastq_set[1],bam_name))
+	print "samtools sort -O bam -T sorting -@ %s %s.tmp.bam > %s.tmp.sorted.bam" % (system_cores[system_type], bam_name, bam_name)
 	# Save Summary Stats
 	#os.system("samtools stats %s | grep '^SN'" % bam_name)
 	#samtools_stats = subprocess.check_output( samtools_stats, shell=True )
 
 	## Mark Duplicates
-	remove_duplicates = """java -jar MarkDuplicates.jar \
-	I=%s.tmp.sorted.bam \
-	O=%s.bam \
-	M=${bam_name}.duplicate_report.txt \
-	VALIDATION_STRINGENCY=SILENT \
-	REMOVE_DUPLICATES=true"""
+	remove_duplicates = """
+	mark_dups=`which MarkDuplicates.jar`
+	java -jar $mark_dups
+	I=%s.tmp.sorted.bam 
+	O=%s.bam 
+	M=%s.duplicate_report.txt 
+	VALIDATION_STRINGENCY=SILENT 
+	REMOVE_DUPLICATES=true""" % (bam_name, bam_name, bam_name)
+	os.system(remove_duplicates)
 
 
 	# Store Bam Statistics
