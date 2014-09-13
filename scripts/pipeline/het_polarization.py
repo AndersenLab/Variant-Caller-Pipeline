@@ -52,7 +52,6 @@ def main():
         else:
             het_set.append(l[0:l.index("\t",l.index("\t")+1)] + '\t'.join((1+len(samples))*['0']))
             sys.stdout.write(l)
-            log.write("\t".join(map(str,het_set)) + "\n")
  
 if __name__ == '__main__':
     main()

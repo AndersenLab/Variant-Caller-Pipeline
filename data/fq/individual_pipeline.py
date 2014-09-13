@@ -101,7 +101,7 @@ def store_eav(Group, Entity, Attribute, Value, Super_Entity=None, Sub_Entity=Non
 		record.save()
 	except:
 		print "%s - %s - %s - %s Record already exists" % (Group, Entity, Attribute, Value)
-		pass
+		record.update()
 
 def save_md5(files = [], type = ""):
 	md5 = subprocess.check_output("parallel %s ::: %s" % (md5_system[system_type], ' '.join(files)), shell=True)
@@ -292,24 +292,24 @@ save_md5([sample + ".bam"])
 
 # Fetch contigs
 contigs = {x.split("\t")[0]:int(x.split("\t")[1]) for x in file("../reference/%s/%s.fa.fai" % (reference, reference), 'r').read().split("\n")[:-1]}
-command = "parallel 'samtools mpileup -t DP,DV,DP4,SP -g -D -f ../reference/%s/%s.fa -r {} %s.bam | bcftools call --format-fields GQ,GP -c -v > raw.%s.{}.bcf' ::: %s" % (reference, reference, sample, sample, ' '.join(contigs.keys()))
-os.system(command)
-os.system("echo %s | bcftools concat -O b `ls -v raw.%s.*.bcf` > %s.no_filter.bcf" % (contigs.keys(), sample , sample.replace(".txt","")))
 
-# Index
-os.system("bcftools index -f %s.no_filter.bcf" % sample)
+if process_steps["call_variants"] == True:
+	command = "parallel 'samtools mpileup -t DP,DV,DP4,SP -g -D -f ../reference/%s/%s.fa -r {} %s.bam | bcftools call --format-fields GQ,GP -c -v > raw.%s.{}.bcf' ::: %s" % (reference, reference, sample, sample, ' '.join(contigs.keys()))
+	os.system(command)
+	os.system("echo %s | bcftools concat -O b `ls -v raw.%s.*.bcf` > %s.no_filter.bcf" % (contigs.keys(), sample , sample.replace(".txt","")))
+	
+	# Index
+	os.system("bcftools index -f %s.no_filter.bcf" % sample)
 
-# Remove temporary files
-os.system("rm -f raw.%s.*" % sample)
+	# Remove temporary files
+	os.system("rm -f raw.%s.*" % sample)
 
-### No Filtering Applied
+# Generate stats - No filter
+os.system("bcftools stats --samples - %s.no_filter.bcf > %s.tmp.stats.txt" % (sample, sample))
 
 # Get variant statistics.
-variant_stats = [x.split("\t") for x in subprocess.check_output("bcftools stats %s.no_filter.bcf | grep '^SN' | cut -f 3,4" % (sample), shell=True).split("\n")[:-1]]
-
-# Save Variant Stats
-for i in variant_stats:
-	store_eav("BCF", sample + ".no_filter.bcf", i[0].replace(":","").title(), i[1], Sub_Entity = "No Filtering", Tool="BCFTools")
+for i in import_stats("%s.tmp.stats.txt" % (sample)):
+	store_eav("BCF Statistics", "%s.no_filter.bcf" % sample, i[0], i[1], Super_Entity = sample, Sub_Entity = "No Filtering", Tool="bcftools")
 
 save_md5([sample + ".no_filter.bcf"])
 
@@ -319,7 +319,22 @@ save_md5([sample + ".no_filter.bcf"])
 
 ### Heterozygote Polarization
 
-os.system("bcftools view {input_file} | python het_polarization.py | bcftools view -O b > {output_file}".format(input_file = sample + ".no_filter.bcf", output_file = sample + ".het_polarization.bcf"))
+os.system("bcftools view {input_file} | python het_polarization.py | bcftools view -O b > {output_file}.het_polarization.bcf".format(input_file = sample + ".no_filter.bcf", output_file = sample))
+
+# Pull in short log (summarizes het polarization stats, and save)
+shortlog = "het_polarization_log.shortlog.%s.txt" % sample
+for i in [x.split(":") for x in file(shortlog, 'r').read().split(",")]:
+	store_eav("Heterozygous Polarization", "%s.het_polarization.bcf" % sample, i[0], i[1], Super_Entity = sample, Tool="Python Script")
+
+# Remove the shortlog
+os.remove(shortlog)
+
+# Generate stats - Following Het Polarization, Overwrites previous stat file.
+os.system("bcftools stats --samples - %s.het_polarization.bcf > %s.tmp.stats.txt" % (sample, sample))
+
+# Get variant statistics.
+for i in import_stats("%s.tmp.stats.txt" % (sample)):
+	store_eav("BCF Statistics", "%s.het_polarization.bcf" % sample, i[0], i[1], Super_Entity = sample, Sub_Entity = "Heterozygote Polarization", Tool="bcftools")
 
 
 #=====================#
