@@ -51,8 +51,8 @@ system_type = subprocess.check_output("uname", shell=True).replace("\n","")
 # The dictionary process_steps is used to skip steps for debugging purposes.
 process_steps = {
 	"debug_sqlite" : True,    # Uses an alternative database.
-	"md5" : False,            # Runs an MD5 hash on every file and saves to database
-	"fastq_stats" : False,     # Produce fastq stats on number of reads, unique reads, etc.
+	"md5" : True,            # Runs an MD5 hash on every file and saves to database
+	"fastq_stats" : True,     # Produce fastq stats on number of reads, unique reads, etc.
 }
 
 #=========#
@@ -192,7 +192,7 @@ for fastq_set in fastq_pairs:
 	M=%s.duplicate_report.txt 
 	VALIDATION_STRINGENCY=SILENT 
 	REMOVE_DUPLICATES=true""" % (bam_name, bam_name, bam_name)
-	os.system(remove_duplicates)
+	#os.system(remove_duplicates)
 
 
 	# Store Bam Statistics
@@ -202,40 +202,6 @@ for fastq_set in fastq_pairs:
 	# Generate md5 of bam and store
 	#md5 = subprocess.check_output("%s %s.bam" % (md5_system[system_type], bam_name)
 	#m = re.match('MD5 \((.*)\) = (.*)', md5)
-
-	samtools_stats = """SN	raw total sequences:	1741156
-SN	filtered sequences:	0
-SN	sequences:	1741156
-SN	is sorted:	0
-SN	1st fragments:	870580
-SN	last fragments:	870576
-SN	reads mapped:	1733254
-SN	reads mapped and paired:	1731612	# paired-end technology bit set + both mates mapped
-SN	reads unmapped:	7902
-SN	reads properly paired:	1726280	# proper-pair bit set
-SN	reads paired:	1741156	# paired-end technology bit set
-SN	reads duplicated:	0	# PCR or optical duplicate bit set
-SN	reads MQ0:	104813	# mapped and MQ=0
-SN	reads QC failed:	0
-SN	non-primary alignments:	0
-SN	total length:	156660257	# ignores clipping
-SN	bases mapped:	155949077	# ignores clipping
-SN	bases mapped (cigar):	154161626	# more accurate
-SN	bases trimmed:	0
-SN	bases duplicated:	0
-SN	mismatches:	983937	# from NM fields
-SN	error rate:	6.382503e-03	# mismatches / bases mapped (cigar)
-SN	average length:	89
-SN	maximum length:	90
-SN	average quality:	64.3
-SN	insert size average:	220.8
-SN	insert size standard deviation:	54.0
-SN	inward oriented pairs:	826481
-SN	outward oriented pairs:	11444
-SN	pairs with other orientation:	459
-SN	pairs on different chromosomes:	1088
-"""
-
 
 
 """

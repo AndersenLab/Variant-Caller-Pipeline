@@ -53,7 +53,7 @@ process_steps = {
 	"debug_sqlite" : True,    # Uses an alternative database.
 	"md5" : False,            # Runs an MD5 hash on every file and saves to database
 	"fastq_stats" : True,     # Produce fastq stats on number of reads, unique reads, etc.
-	"align" : False,
+	"align" : True,
 }
 
 #==========#
@@ -102,6 +102,13 @@ def store_eav(Group, Entity, Attribute, Value, Sub_Entity=None, Tool=None):
 	except:
 		pass
 
+def save_md5(files = [], type = ""):
+	md5 = subprocess.check_output("parallel %s ::: %s" % (md5_system[system_type], ' '.join(files)), shell=True)
+	m = re.findall('MD5 \((.*)\) = (.*)', md5)
+	for i in m:
+		# Check File Hashes
+		store_eav("MD5 Hash", i[0], "File Hash", i[1], Tool="MD5")
+
 #===========#
 # Functions #
 #===========#
@@ -137,12 +144,8 @@ def calc_bam_depth_coverage(Group, reference, bam, by_chr = False, mt_chr = "chr
 		store_eav(Group, bam + ".bam", "Covered Bases", covered_bases, Sub_Entity = "Nuclear", Tool = "Samtools + Awk")
 		store_eav(Group, bam + ".bam", "Coverage", int(covered_bases)/float(reference_length-contigs[mt_chr]), Sub_Entity = "Nuclear", Tool = "Samtools + Awk")
 
-		print mtDNA_depth
 		# Generate ratio mt avg Depth to Nuclear avg Depth
 		store_eav(Group, bam + ".bam", "(mtDNA/Nuclear) Depth Ratio", mtDNA_depth/float(nuclear_depth) , Sub_Entity = "Ratio", Tool = "Samtools + Awk")
-
-
-
 
 #=========#
 # Options #
@@ -173,16 +176,7 @@ if all([fq_pairs_count.count(x)==2 for x in fq_pairs_count]) != True:
 fastq_pairs = zip(sorted([x for x in fq_set if x.find("1.fq.gz") != -1]), sorted([x for x in fq_set if x.find("2.fq.gz") != -1]))
 
 # Generate MD5's for each fastq
-if process_steps["md5"] == True:
-	md5 = subprocess.check_output("parallel %s ::: %s" % (md5_system[system_type], ' '.join(fq_set)), shell=True)
-	m = re.findall('MD5 \((.*)\) = (.*)', md5)
-	for i in m:
-		# Check File Hashes
-		if i[0].split("-")[3] != i[1][0:5]:
-			raise Exception("MD5 Hash for %s Mismatch. Hash for file is %s" % (i[0],i[1]))
-		# Store if Correct
-		store_eav("Fastq Statistics", i[0], "File Hash", i[1], Tool="MD5")
-
+save_md5(fq_set)
 
 # Generate sequence fastq statistics using awk
 command = "parallel \"gunzip -c {} | awk -v filename={} '((NR-2)%%4==0){read=\$1; total++; count[read]++}END{for(read in count){if(!max||count[read]>max) {max=count[read];maxRead=read};if(count[read]==1){unique++}};print filename,total,unique,unique*100/total,maxRead,count[maxRead],count[maxRead]*100/total}'\" ::: %s" % ' '.join(fq_set)
@@ -242,7 +236,6 @@ if process_steps["align"] == True:
 		os.system(remove_duplicates)
 
 		# Parse Duplicate Stats From Picard and Store
-		print "egrep -v '^(#|^$)' %s.duplicate_report.txt" % bam_name
 		f = subprocess.check_output("egrep -v '^(#|^$)' %s.duplicate_report.txt" % bam_name, shell=True)
 		dup_report = [x.split("\t") for x in f.split("\n")[0:2]]
 		dup_report = zip([x.title() for x in dup_report[0]], dup_report[1])
@@ -258,9 +251,7 @@ if process_steps["align"] == True:
 		calc_bam_depth_coverage("BAM Statistics", reference, bam_name)
 
 		# Generate md5 of bam and store
-		md5 = subprocess.check_output("%s %s.bam" % (md5_system[system_type], bam_name), shell=True)
-		m = re.match('MD5 \((.*)\) = (.*)', md5)
-		store_eav("BAM Statistics", m.group(1), "File Hash", m.group(2), Tool="MD5")
+		save_md5([bam_name + ".bam"])
 
 		# Remove temporary files
 		os.remove("%s.tmp.sorted.bam" % bam_name)
@@ -270,7 +261,10 @@ if process_steps["align"] == True:
 		bam_set.append(bam_name + ".bam")
 
 	# Merge BAMs into a single BAM.
-	os.system("samtools merge -f -@ 4 %s.bam %s " % (sample, ' '.join(bam_set)))
+	if len(bam_set) > 1:
+		os.system("samtools merge -f -@ 4 %s.bam %s " % (sample, ' '.join(bam_set)))
+	else:
+		os.system("mv %s %s.bam" % (bam_set[0] ,sample))
 	os.system("samtools index %s.bam" % sample)
 
 # Generate Depth and coverage statistics of the merged bam
@@ -287,12 +281,43 @@ for b in bam_set:
 	except:
 		pass
 
-# Finally - Generate and Save an md5 sum.
-md5 = subprocess.check_output("%s %s.bam" % (md5_system[system_type], sample), shell=True)
-m = re.match('MD5 \((.*)\) = (.*)', md5)
-store_eav("BAM Merged Statistics", m.group(1), "File Hash", m.group(2), Tool="MD5")
 
-#======================================#
-# Generate Mitochondrial Statistics    #
-#======================================#
+# Finally - Generate and Save an md5 sum.
+save_md5([sample + ".bam"])
+
+#====================#
+# Variant Calling    #
+#====================#
+
+# Fetch contigs
+contigs = {x.split("\t")[0]:int(x.split("\t")[1]) for x in file("../reference/%s/%s.fa.fai" % (reference, reference), 'r').read().split("\n")[:-1]}
+command = "parallel 'samtools mpileup -t DP,DV,DP4,SP -g -D -f ../reference/%s/%s.fa -r {} %s.bam | bcftools call --format-fields GQ,GP -c -v > raw.%s.{}.bcf' ::: %s" % (reference, reference, sample, sample, ' '.join(contigs.keys()))
+os.system(command)
+os.system("echo %s | bcftools concat -O b `ls -v raw.%s.*.bcf` > %s.bcf" % (contigs.keys(), sample , sample.replace(".txt","")))
+
+# Index
+os.system("bcftools index -f %s.bcf" % sample)
+
+# Remove temporary files
+os.system("rm -f raw.%s.*" % sample)
+
+### No Filtering Applied
+
+# Get variant statistics.
+variant_stats = [x.split("\t") for x in subprocess.check_output("bcftools stats %s.bcf | grep '^SN' | cut -f 3,4" % (sample), shell=True).split("\n")[:-1]]
+
+# Save Variant Stats
+for i in variant_stats:
+	store_eav("BCF", sample + ".bcf", i[0].replace(":","").title(), i[1], Sub_Entity = "No Filtering", Tool="BCFTools")
+
+save_md5([sample + ".bcf"])
+
+#======================#
+# Variant Filtering    #
+#======================#
+
+#=====================#
+# Apply Prediction    #
+#=====================#
+
 
