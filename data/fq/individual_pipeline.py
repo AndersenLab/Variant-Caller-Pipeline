@@ -53,6 +53,7 @@ process_steps = {
 	"debug_sqlite" : True,    # Uses an alternative database.
 	"md5" : False,            # Runs an MD5 hash on every file and saves to database
 	"fastq_stats" : True,     # Produce fastq stats on number of reads, unique reads, etc.
+	"align" : False,
 }
 
 #==========#
@@ -71,7 +72,7 @@ db.connect()
 class EAV(Model):
     Group = CharField(index=True)
     Entity = CharField(index=True)
-    Sub_Entity = CharField(index=True)
+    Sub_Entity = CharField(index=True, null=True)
     Attribute = CharField(index=True)
     Value = CharField(index=True)
     Tool = CharField(index=True, null=True)
@@ -105,26 +106,42 @@ def store_eav(Group, Entity, Attribute, Value, Sub_Entity=None, Tool=None):
 # Functions #
 #===========#
 
-def calc_bam_depth_coverage(Group, reference, bam, by_chr = False):
+def calc_bam_depth_coverage(Group, reference, bam, by_chr = False, mt_chr = "chrM"):
 	""" 
 		Calculates the average Depth, Covered Bases, and Coverage of a given Bam File
 	"""
 	results = subprocess.check_output("samtools depth %s.bam | awk '{sum+=$3;cnt++}END{print sum/cnt \"\t\" sum}'" % bam.replace(".bam",""), shell=True).replace("\n", "").split("\t")
-	store_eav(Group, bam + ".bam", "Average Depth", results[0], Tool = "Samtools + Awk")
-	store_eav(Group, bam + ".bam", "Covered Bases", results[1], Tool = "Samtools + Awk")
+	store_eav(Group, bam + ".bam", "Average Depth", results[0], Sub_Entity = "Genome", Tool = "Samtools + Awk")
+	store_eav(Group, bam + ".bam", "Covered Bases", results[1], Sub_Entity = "Genome", Tool = "Samtools + Awk")
 
 	# Calculate Coverage - ALL and by Chromosome
-	reference_length = file("../reference/%s/%s.fa.amb" % (reference, reference), 'r').read().split(" ")[0]
+	reference_length = int(file("../reference/%s/%s.fa.amb" % (reference, reference), 'r').read().split(" ")[0])
 	store_eav(Group, bam + ".bam", "Coverage", int(results[1])/float(reference_length), Sub_Entity = "Genome", Tool = "Samtools + Awk")
 
 	# Calculate Average Depth and Coverage for each chromosome indivudally.
 	if by_chr == True:
 		# For merged bam, generate per-chromosome stats.
-		contigs = [x.split("\t")[:2] for x in file("../reference/%s/%s.fa.fai" % (reference, reference), 'r').read().split("\n")[:-1]]
-		for chr in contigs:
-			results = subprocess.check_output("samtools depth -r %s %s.bam | awk '{sum+=$3;cnt++}END{print sum/cnt \"\t\" sum}'" % (chr[0], bam.replace(".bam","")), shell=True).replace("\n", "").split("\t")
-			store_eav(Group, bam + ".bam", "Average Depth", results[0], Sub_Entity = chr[0],Tool = "Samtools + Awk")
-			store_eav(Group, bam + ".bam", "Covered Bases", results[1], Sub_Entity = chr[0], Tool = "Samtools + Awk")
+		contigs = {x.split("\t")[0]:int(x.split("\t")[1]) for x in file("../reference/%s/%s.fa.fai" % (reference, reference), 'r').read().split("\n")[:-1]}
+		for chr in contigs.keys():
+			depth, covered_bases = subprocess.check_output("samtools depth -r %s %s.bam | awk '{sum+=$3;cnt++}END{print sum/cnt \"\t\" sum}'" % (chr, bam.replace(".bam","")), shell=True).replace("\n", "").split("\t")
+			store_eav(Group, bam + ".bam", "Average Depth", depth, Sub_Entity = chr,Tool = "Samtools + Awk")
+			store_eav(Group, bam + ".bam", "Covered Bases", covered_bases, Sub_Entity = chr, Tool = "Samtools + Awk")
+			store_eav(Group, bam + ".bam", "Coverage", int(covered_bases)/float(contigs[chr]), Sub_Entity = chr, Tool = "Samtools + Awk")
+
+			if chr == mt_chr:
+				mtDNA_depth = float(depth)
+
+		# Generate Nuclear Genome Stats
+		nuclear_depth, covered_bases = subprocess.check_output("samtools depth %s.bam | grep -v '%s' | awk '{sum+=$3;cnt++}END{print sum/cnt \"\t\" sum}'" % (bam.replace(".bam",""), mt_chr), shell=True).replace("\n", "").split("\t")
+		store_eav(Group, bam + ".bam", "Average Depth", nuclear_depth, Sub_Entity = "Nuclear",Tool = "Samtools + Awk")
+		store_eav(Group, bam + ".bam", "Covered Bases", covered_bases, Sub_Entity = "Nuclear", Tool = "Samtools + Awk")
+		store_eav(Group, bam + ".bam", "Coverage", int(covered_bases)/float(reference_length-contigs[mt_chr]), Sub_Entity = "Nuclear", Tool = "Samtools + Awk")
+
+		print mtDNA_depth
+		# Generate ratio mt avg Depth to Nuclear avg Depth
+		store_eav(Group, bam + ".bam", "(mtDNA/Nuclear) Depth Ratio", mtDNA_depth/float(nuclear_depth) , Sub_Entity = "Ratio", Tool = "Samtools + Awk")
+
+
 
 
 #=========#
@@ -197,63 +214,64 @@ for fq in fq_set:
 
 bam_set = [] # Created bams will later be merged.
 
+# Assign sample using original fastq.
+sample = fq_set[0].split("-")[2]
+
 # Align genomes using bwa.
-for fastq_set in fastq_pairs:
+if process_steps["align"] == True:
+	for fastq_set in fastq_pairs:
+		# Generate bam name
+		reference_loc = "../reference/%s/%s.fa" % (reference, reference)
+		bam_name = '-'.join(fastq_set[0].split("-")[0:4] + fastq_set[1].split("-")[3:4])
+		split_bam_name = bam_name.split("-")
+		library_LB = split_bam_name[1]
+		readgroup = '@RG\\tID:%s\\tLB:%s\\tSM:%s\\tPL:ILLUMINA' % (bam_name, library_LB, sample)
 
-	# Generate bam name
-	reference_loc = "../reference/%s/%s.fa" % (reference, reference)
-	bam_name = '-'.join(fastq_set[0].split("-")[0:4] + fastq_set[1].split("-")[3:4])
-	split_bam_name = bam_name.split("-")
-	library_LB = split_bam_name[1]
-	sample = split_bam_name[2]
-	readgroup = '@RG\\tID:%s\\tLB:%s\\tSM:%s\\tPL:ILLUMINA' % (bam_name, library_LB, sample)
+		# Align, add read-group (@RG) header line, and output as a bam.
+		os.system("bwa mem -M -t %s -R \"%s\" %s %s %s | samtools view -b -S -h -@ 2 -  > %s.tmp.bam" % (system_cores[system_type], readgroup, reference_loc, fastq_set[0], fastq_set[1],bam_name))
+		os.system("samtools sort -O bam -T sorting -@ %s %s.tmp.bam > %s.tmp.sorted.bam" % (system_cores[system_type], bam_name, bam_name))
 
-	# Align, add read-group (@RG) header line, and output as a bam.
-	os.system("bwa mem -M -t %s -R \"%s\" %s %s %s | samtools view -b -S -h -@ 2 -  > %s.tmp.bam" % (system_cores[system_type], readgroup, reference_loc, fastq_set[0], fastq_set[1],bam_name))
-	os.system("samtools sort -O bam -T sorting -@ %s %s.tmp.bam > %s.tmp.sorted.bam" % (system_cores[system_type], bam_name, bam_name))
+		## Mark Duplicates, and remove.
+		remove_duplicates = """
+		mark_dups=`which MarkDuplicates.jar`
+		java -jar $mark_dups \
+		I=%s.tmp.sorted.bam \
+		O=%s.bam \
+		M=%s.duplicate_report.txt \
+		VALIDATION_STRINGENCY=SILENT REMOVE_DUPLICATES=true""" % (bam_name, bam_name, bam_name)
+		os.system(remove_duplicates)
 
-	## Mark Duplicates, and remove.
-	remove_duplicates = """
-	mark_dups=`which MarkDuplicates.jar`
-	java -jar $mark_dups \
-	I=%s.tmp.sorted.bam \
-	O=%s.bam \
-	M=%s.duplicate_report.txt \
-	VALIDATION_STRINGENCY=SILENT REMOVE_DUPLICATES=true""" % (bam_name, bam_name, bam_name)
-	os.system(remove_duplicates)
+		# Parse Duplicate Stats From Picard and Store
+		print "egrep -v '^(#|^$)' %s.duplicate_report.txt" % bam_name
+		f = subprocess.check_output("egrep -v '^(#|^$)' %s.duplicate_report.txt" % bam_name, shell=True)
+		dup_report = [x.split("\t") for x in f.split("\n")[0:2]]
+		dup_report = zip([x.title() for x in dup_report[0]], dup_report[1])
+		for record in dup_report:
+			store_eav("BAM Statistics", bam_name + ".bam", record[0], record[1], Tool="PICARD")
 
-	# Parse Duplicate Stats From Picard and Store
-	print "egrep -v '^(#|^$)' %s.duplicate_report.txt" % bam_name
-	f = subprocess.check_output("egrep -v '^(#|^$)' %s.duplicate_report.txt" % bam_name, shell=True)
-	dup_report = [x.split("\t") for x in f.split("\n")[0:2]]
-	dup_report = zip([x.title() for x in dup_report[0]], dup_report[1])
+		# Store Bam Statistics
+		samtools_stats = subprocess.check_output( "samtools stats %s.bam | grep '^SN'" % bam_name , shell=True )
+		for line in [x.split('\t')[1:3] for x in samtools_stats.split("\n")[:-1]]:
+			store_eav("BAM Statistics", bam_name + ".bam", line[0].replace(":","").title(), line[1], Tool = "Samtools")
 
-	for record in dup_report:
-		store_eav("BAM Statistics", bam_name + ".bam", record[0], record[1], Tool="PICARD")
+		# Generate Bam Depth and Coverage Statistics and save to database.
+		calc_bam_depth_coverage("BAM Statistics", reference, bam_name)
 
-	# Store Bam Statistics
-	samtools_stats = subprocess.check_output( "samtools stats %s.bam | grep '^SN'" % bam_name , shell=True )
-	for line in [x.split('\t')[1:3] for x in samtools_stats.split("\n")[:-1]]:
-		store_eav("BAM Statistics", bam_name + ".bam", line[0].replace(":","").title(), line[1], Tool = "Samtools")
+		# Generate md5 of bam and store
+		md5 = subprocess.check_output("%s %s.bam" % (md5_system[system_type], bam_name), shell=True)
+		m = re.match('MD5 \((.*)\) = (.*)', md5)
+		store_eav("BAM Statistics", m.group(1), "File Hash", m.group(2), Tool="MD5")
 
-	# Generate Bam Depth and Coverage Statistics and save to database.
-	calc_bam_depth_coverage("BAM Statistics", reference, bam_name)
+		# Remove temporary files
+		os.remove("%s.tmp.sorted.bam" % bam_name)
+		os.remove("%s.tmp.bam" % bam_name)
+		os.remove("%s.duplicate_report.txt" % bam_name)
 
-	# Generate md5 of bam and store
-	md5 = subprocess.check_output("%s %s.bam" % (md5_system[system_type], bam_name), shell=True)
-	m = re.match('MD5 \((.*)\) = (.*)', md5)
-	store_eav("BAM Statistics", m.group(1), "File Hash", m.group(2), Tool="MD5")
+		bam_set.append(bam_name + ".bam")
 
-	# Remove temporary files
-	os.remove("%s.tmp.sorted.bam" % bam_name)
-	os.remove("%s.tmp.bam" % bam_name)
-	os.remove("%s.duplicate_report.txt" % bam_name)
-
-	bam_set.append(bam_name + ".bam")
-
-# Merge BAMs into a single BAM.
-os.system("samtools merge -f -@ 4 %s.bam %s " % (sample, ' '.join(bam_set)))
-os.system("samtools index %s.bam" % sample)
+	# Merge BAMs into a single BAM.
+	os.system("samtools merge -f -@ 4 %s.bam %s " % (sample, ' '.join(bam_set)))
+	os.system("samtools index %s.bam" % sample)
 
 # Generate Depth and coverage statistics of the merged bam
 calc_bam_depth_coverage("BAM Merged Statistics", reference, sample, by_chr = True)
@@ -264,7 +282,10 @@ for line in [x.split('\t')[1:3] for x in samtools_stats.split("\n")[:-1]]:
 
 # Index Merged Bam File, and remove intermediates.
 for b in bam_set:
-	os.remove(b)
+	try:
+		os.remove(b)
+	except:
+		pass
 
 # Finally - Generate and Save an md5 sum.
 md5 = subprocess.check_output("%s %s.bam" % (md5_system[system_type], sample), shell=True)
