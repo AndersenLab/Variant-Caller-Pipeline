@@ -53,7 +53,8 @@ process_steps = {
 	"debug_sqlite" : True,    # Uses an alternative database.
 	"md5" : False,            # Runs an MD5 hash on every file and saves to database
 	"fastq_stats" : True,     # Produce fastq stats on number of reads, unique reads, etc.
-	"align" : True,
+	"align" : False,
+	"call_variants" : False
 }
 
 #==========#
@@ -71,8 +72,9 @@ db.connect()
 
 class EAV(Model):
     Group = CharField(index=True)
+    Super_Entity = CharField(index=True, null=True) # Used for option secondary super groupings
     Entity = CharField(index=True)
-    Sub_Entity = CharField(index=True, null=True)
+    Sub_Entity = CharField(index=True, null=True) # Used for optional secondary sub groupings
     Attribute = CharField(index=True)
     Value = CharField(index=True)
     Tool = CharField(index=True, null=True)
@@ -85,8 +87,6 @@ class EAV(Model):
             (('Group', 'Entity', 'Attribute', 'Value'), True),
         )
 
-
-
 # Drop tables if specified.
 if process_steps["debug_sqlite"] == True:
 	db.drop_tables([EAV], safe=True)
@@ -95,11 +95,12 @@ else:
 	db.create_tables([EAV], safe=True)
 
 
-def store_eav(Group, Entity, Attribute, Value, Sub_Entity=None, Tool=None):
-	record = EAV(Group=Group, Entity=Entity, Attribute=Attribute, Value=Value, DateTime=datetime.now(), Sub_Entity=Sub_Entity, Tool=Tool)
+def store_eav(Group, Entity, Attribute, Value, Super_Entity=None, Sub_Entity=None, Tool=None):
+	record = EAV(Group=Group, Entity=Entity, Attribute=Attribute, Value=Value, DateTime=datetime.now(), Super_Entity=Super_Entity, Sub_Entity=Sub_Entity, Tool=Tool)
 	try:
 		record.save()
 	except:
+		print "%s - %s - %s - %s Record already exists" % (Group, Entity, Attribute, Value)
 		pass
 
 def save_md5(files = [], type = ""):
@@ -118,12 +119,12 @@ def calc_bam_depth_coverage(Group, reference, bam, by_chr = False, mt_chr = "chr
 		Calculates the average Depth, Covered Bases, and Coverage of a given Bam File
 	"""
 	results = subprocess.check_output("samtools depth %s.bam | awk '{sum+=$3;cnt++}END{print sum/cnt \"\t\" sum}'" % bam.replace(".bam",""), shell=True).replace("\n", "").split("\t")
-	store_eav(Group, bam + ".bam", "Average Depth", results[0], Sub_Entity = "Genome", Tool = "Samtools + Awk")
-	store_eav(Group, bam + ".bam", "Covered Bases", results[1], Sub_Entity = "Genome", Tool = "Samtools + Awk")
+	store_eav(Group, bam + ".bam", "Average Depth", results[0], Super_Entity = bam, Sub_Entity = "Genome", Tool = "Samtools + Awk")
+	store_eav(Group, bam + ".bam", "Covered Bases", results[1], Super_Entity = bam, Sub_Entity = "Genome", Tool = "Samtools + Awk")
 
 	# Calculate Coverage - ALL and by Chromosome
 	reference_length = int(file("../reference/%s/%s.fa.amb" % (reference, reference), 'r').read().split(" ")[0])
-	store_eav(Group, bam + ".bam", "Coverage", int(results[1])/float(reference_length), Sub_Entity = "Genome", Tool = "Samtools + Awk")
+	store_eav(Group, bam + ".bam", "Coverage", int(results[1])/float(reference_length), Super_Entity = bam, Sub_Entity = "Genome", Tool = "Samtools + Awk")
 
 	# Calculate Average Depth and Coverage for each chromosome indivudally.
 	if by_chr == True:
@@ -131,21 +132,21 @@ def calc_bam_depth_coverage(Group, reference, bam, by_chr = False, mt_chr = "chr
 		contigs = {x.split("\t")[0]:int(x.split("\t")[1]) for x in file("../reference/%s/%s.fa.fai" % (reference, reference), 'r').read().split("\n")[:-1]}
 		for chr in contigs.keys():
 			depth, covered_bases = subprocess.check_output("samtools depth -r %s %s.bam | awk '{sum+=$3;cnt++}END{print sum/cnt \"\t\" sum}'" % (chr, bam.replace(".bam","")), shell=True).replace("\n", "").split("\t")
-			store_eav(Group, bam + ".bam", "Average Depth", depth, Sub_Entity = chr,Tool = "Samtools + Awk")
-			store_eav(Group, bam + ".bam", "Covered Bases", covered_bases, Sub_Entity = chr, Tool = "Samtools + Awk")
-			store_eav(Group, bam + ".bam", "Coverage", int(covered_bases)/float(contigs[chr]), Sub_Entity = chr, Tool = "Samtools + Awk")
+			store_eav(Group, bam + ".bam", "Average Depth", depth, Super_Entity = bam, Sub_Entity = chr,Tool = "Samtools + Awk")
+			store_eav(Group, bam + ".bam", "Covered Bases", covered_bases, Sub_Entity = chr, Super_Entity = bam,  Tool = "Samtools + Awk")
+			store_eav(Group, bam + ".bam", "Coverage", int(covered_bases)/float(contigs[chr]), Super_Entity = bam, Sub_Entity = chr, Tool = "Samtools + Awk")
 
 			if chr == mt_chr:
 				mtDNA_depth = float(depth)
 
 		# Generate Nuclear Genome Stats
 		nuclear_depth, covered_bases = subprocess.check_output("samtools depth %s.bam | grep -v '%s' | awk '{sum+=$3;cnt++}END{print sum/cnt \"\t\" sum}'" % (bam.replace(".bam",""), mt_chr), shell=True).replace("\n", "").split("\t")
-		store_eav(Group, bam + ".bam", "Average Depth", nuclear_depth, Sub_Entity = "Nuclear",Tool = "Samtools + Awk")
-		store_eav(Group, bam + ".bam", "Covered Bases", covered_bases, Sub_Entity = "Nuclear", Tool = "Samtools + Awk")
-		store_eav(Group, bam + ".bam", "Coverage", int(covered_bases)/float(reference_length-contigs[mt_chr]), Sub_Entity = "Nuclear", Tool = "Samtools + Awk")
+		store_eav(Group, bam + ".bam", "Average Depth", nuclear_depth, Super_Entity = bam, Sub_Entity = "Nuclear",Tool = "Samtools + Awk")
+		store_eav(Group, bam + ".bam", "Covered Bases", covered_bases, Super_Entity = bam, Sub_Entity = "Nuclear", Tool = "Samtools + Awk")
+		store_eav(Group, bam + ".bam", "Coverage", int(covered_bases)/float(reference_length-contigs[mt_chr]), Super_Entity = bam,  Sub_Entity = "Nuclear", Tool = "Samtools + Awk")
 
 		# Generate ratio mt avg Depth to Nuclear avg Depth
-		store_eav(Group, bam + ".bam", "(mtDNA/Nuclear) Depth Ratio", mtDNA_depth/float(nuclear_depth) , Sub_Entity = "Ratio", Tool = "Samtools + Awk")
+		store_eav(Group, bam + ".bam", "(mtDNA/Nuclear) Depth Ratio", mtDNA_depth/float(nuclear_depth), Super_Entity = bam,  Sub_Entity = "Ratio", Tool = "Samtools + Awk")
 
 #=========#
 # Options #
@@ -161,7 +162,7 @@ system_cores = {"Linux": 8, "Darwin": 4} # For use with BWA
 
 args = sys.argv[1:] # Used to specify a strain name for fq's that will be aligned.
 
-fq_set = glob.glob("*-%s-*fq.gz" %args[0])
+fq_set = glob.glob("*-%s-*fq.gz" % args[0])
 
 # Do we have fqs
 if (len(fq_set) == 0):
@@ -240,7 +241,7 @@ if process_steps["align"] == True:
 		dup_report = [x.split("\t") for x in f.split("\n")[0:2]]
 		dup_report = zip([x.title() for x in dup_report[0]], dup_report[1])
 		for record in dup_report:
-			store_eav("BAM Statistics", bam_name + ".bam", record[0], record[1], Tool="PICARD")
+			store_eav("Duplication Statistics", bam_name + ".bam", record[0], record[1], Tool="PICARD")
 
 		# Store Bam Statistics
 		samtools_stats = subprocess.check_output( "samtools stats %s.bam | grep '^SN'" % bam_name , shell=True )
@@ -293,10 +294,10 @@ save_md5([sample + ".bam"])
 contigs = {x.split("\t")[0]:int(x.split("\t")[1]) for x in file("../reference/%s/%s.fa.fai" % (reference, reference), 'r').read().split("\n")[:-1]}
 command = "parallel 'samtools mpileup -t DP,DV,DP4,SP -g -D -f ../reference/%s/%s.fa -r {} %s.bam | bcftools call --format-fields GQ,GP -c -v > raw.%s.{}.bcf' ::: %s" % (reference, reference, sample, sample, ' '.join(contigs.keys()))
 os.system(command)
-os.system("echo %s | bcftools concat -O b `ls -v raw.%s.*.bcf` > %s.bcf" % (contigs.keys(), sample , sample.replace(".txt","")))
+os.system("echo %s | bcftools concat -O b `ls -v raw.%s.*.bcf` > %s.no_filter.bcf" % (contigs.keys(), sample , sample.replace(".txt","")))
 
 # Index
-os.system("bcftools index -f %s.bcf" % sample)
+os.system("bcftools index -f %s.no_filter.bcf" % sample)
 
 # Remove temporary files
 os.system("rm -f raw.%s.*" % sample)
@@ -304,17 +305,22 @@ os.system("rm -f raw.%s.*" % sample)
 ### No Filtering Applied
 
 # Get variant statistics.
-variant_stats = [x.split("\t") for x in subprocess.check_output("bcftools stats %s.bcf | grep '^SN' | cut -f 3,4" % (sample), shell=True).split("\n")[:-1]]
+variant_stats = [x.split("\t") for x in subprocess.check_output("bcftools stats %s.no_filter.bcf | grep '^SN' | cut -f 3,4" % (sample), shell=True).split("\n")[:-1]]
 
 # Save Variant Stats
 for i in variant_stats:
-	store_eav("BCF", sample + ".bcf", i[0].replace(":","").title(), i[1], Sub_Entity = "No Filtering", Tool="BCFTools")
+	store_eav("BCF", sample + ".no_filter.bcf", i[0].replace(":","").title(), i[1], Sub_Entity = "No Filtering", Tool="BCFTools")
 
-save_md5([sample + ".bcf"])
+save_md5([sample + ".no_filter.bcf"])
 
 #======================#
 # Variant Filtering    #
 #======================#
+
+### Heterozygote Polarization
+
+os.system("bcftools view {input_file} | python het_polarization.py | bcftools view -O b > {output_file}".format(input_file = sample + ".no_filter.bcf", output_file = sample + ".het_polarization.bcf"))
+
 
 #=====================#
 # Apply Prediction    #
