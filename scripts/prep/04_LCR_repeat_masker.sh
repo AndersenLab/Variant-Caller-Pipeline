@@ -13,11 +13,11 @@ bedtools complement -i LCR_ce10_rmsk.bed  -g ce10.genome | sort -k 1,1 -k2,2n > 
 
 ## LCR 2
 
-wget 'ftp://ftp.wormbase.org/pub/wormbase/releases/WS220/species/c_elegans/c_elegans.WS220.genomic_masked.fa.gz'
+wget 'ftp://ftp.wormbase.org/pub/wormbase/releases/WS220/species/c_elegans/c_elegans.WS220.genomic_masked.fa.gz' CHROMOSOME_ chr
 python ../../scripts/misc/generate_masked_ranges.py c_elegans.WS220.genomic_masked.fa.gz CHROMSOME_ chr > WS220.wormbase.masked.bed
 
 ## Generate Stats on repeat masking, and store in database.
 bedtools genomecov -i ce10.ucsc.masked.bed -g ce10.genome > ce10.ucsc.masked.genomecov.statsitics.txt
-bedtools genomecov -i ce10.ucsc.masked.bed -g ce10.genome > WS220.wormbase.masked.genomecov.statistics.txt
+bedtools genomecov -i WS220.wormbase.masked.bed -g ce10.genome > WS220.wormbase.masked.genomecov.statistics.txt
 
 rm c_elegans.WS220.genomic_masked.fa.gz
