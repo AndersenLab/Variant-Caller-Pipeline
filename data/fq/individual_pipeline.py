@@ -37,6 +37,7 @@ import os, glob, sys, subprocess
 import sys
 import re
 import gzip
+import math
 import tempfile
 from seq_utility_functions import *
 from datetime import datetime
@@ -323,20 +324,27 @@ if process_steps["call_variants"] == True:
 	os.system("rm -f raw.%s.*" % sample)
 
 
-gen_bcf_stats("%s.no_filter.bcf" %  sample, sample, "No Filter", "")
+gen_bcf_stats("%s.no_filter.bcf" %  sample, sample, "No Filter", "No Filter")
 
 
 #======================#
 # Variant Filtering    #
 #======================#
 
-### LCR Filtering
-os.system("bcftools view -O b -R ../LCR_Region/{LCR_File} {input_file}.no_filter.bcf > {output_file}.LCR.bcf".format(input_file = sample , output_file = sample, LCR_File = LCR_File ))
+#
+# LCR Filtering
+#
 
+# rewrite to apply as filter, and not remove variants...
+
+os.system("bcftools view -O b -R ../LCR_Region/{LCR_File} {input_file}.no_filter.bcf > {output_file}.LCR.bcf".format(input_file = sample , output_file = sample, LCR_File = LCR_File ))
 gen_bcf_stats("%s.LCR.bcf" % sample, sample, "LCR Filtering", LCR_File)
 
-### Heterozygote Polarization
-os.system("bcftools view {input_file} | python het_polarization.py | bcftools view -O b > {output_file}.het_polarization.bcf".format(input_file = sample + ".no_filter.bcf", output_file = sample))
+#
+# Heterozygote Polarization
+#
+
+os.system("bcftools view {input_file}.LCR.bcf | python het_polarization.py | bcftools view -O b > {output_file}.het_polarization.bcf".format(input_file = sample , output_file = sample))
 
 # Pull in short log (summarizes het polarization stats, and save)
 shortlog = "het_polarization_log.shortlog.%s.txt" % sample
@@ -346,10 +354,35 @@ for i in [x.split(":") for x in file(shortlog, 'r').read().split(",")]:
 # Remove the shortlog
 os.remove(shortlog)
 
+# Stats
+gen_bcf_stats("%s.het_polarization.bcf" % sample, sample, "Heterozygous Polarization", "Heterozygous Polarization")
 
-### Quality and Depth
+# Get Average Depth
+average_depth = float(subprocess.check_output("bcftools query -f '%%DP\\n' %s | awk '{ total += $1; count++ } END { avg=(total/count);  print (avg) }'" % (sample + ".het_polarization.bcf"), shell=True).strip())
+depth_threshold = float(average_depth + 3*math.sqrt(average_depth))
+store_eav("BCF Statistics", "%s.het_polarization.bcf" % sample, "Average Variant Depth", average_depth, Tool="Awk")
+store_eav("BCF Statistics", "%s.het_polarization.bcf" % sample, "Depth Threshold", depth_threshold, Tool = "Python + Awk")
+
+depth_threshold = 1
+#
+# Filter Depth
+#
+print "bcftools filter -O b -s 'Depth' --exclude 'DP<{depth_threshold}' {input_file}.het_polarization.bcf > {output_file}.dp.bcf".format(input_file = sample , output_file = sample, depth_threshold = depth_threshold)
+
+os.system("bcftools filter -O b --mode +x  -s 'Fail Depth' --exclude 'DP>{depth_threshold}' {input_file}.het_polarization.bcf > {output_file}.dp.bcf".format(input_file = sample , output_file = sample, depth_threshold = depth_threshold))
+gen_bcf_stats("%s.dp.bcf" % sample, sample, "Depth Filter", "Depth")
+
+#
+# Filter Quality
+#
+print "bcftools filter -O b -s 'Fail Quality' --exclude '%QUAL<{qual_threshold}' {input_file}.dp.bcf > {output_file}.qual.bcf".format(input_file = sample , output_file = sample, qual_threshold = 30)
+
+os.system("bcftools filter -O b --mode +x -s 'Fail Quality' --exclude '%QUAL<{qual_threshold}' {input_file}.dp.bcf > {output_file}.qual.bcf".format(input_file = sample , output_file = sample, qual_threshold = 30))
+gen_bcf_stats("%s.qual.bcf" % sample, sample, "Quality Filter", "Quality")
 
 
+#"bcftools view %s %s %s > %s " % (lcr_filter, vcf, filter_set, vcf_filename)
+#bcftools filter -O b --include '%%QUAL>%s' 
 #=====================#
 # Apply Prediction    #
 #=====================#
