@@ -53,8 +53,8 @@ process_steps = {
 	"debug_sqlite" : True,    # Uses an alternative database.
 	"md5" : False,            # Runs an MD5 hash on every file and saves to database
 	"fastq_stats" : True,     # Produce fastq stats on number of reads, unique reads, etc.
-	"align" : False,
-	"call_variants" : False
+	"align" : True,
+	"call_variants" : True
 }
 
 #==========#
