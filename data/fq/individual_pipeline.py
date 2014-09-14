@@ -37,6 +37,7 @@ import os, glob, sys, subprocess
 import sys
 import re
 import gzip
+import tempfile
 from seq_utility_functions import *
 from datetime import datetime
 from peewee import *
@@ -52,10 +53,14 @@ system_type =  os.uname()[0]
 process_steps = {
 	"debug_sqlite" : True,    # Uses an alternative database.
 	"md5" : False,            # Runs an MD5 hash on every file and saves to database
-	"fastq_stats" : True,     # Produce fastq stats on number of reads, unique reads, etc.
-	"align" : True,
-	"call_variants" : True
+	"fastq_stats" : False,     # Produce fastq stats on number of reads, unique reads, etc.
+	"align" : False,
+	"bam_stats" : False,
+	"call_variants" : False
 }
+
+## LCR File
+LCR_File = "WS220.wormbase.masked.bed"
 
 #==========#
 # Database #
@@ -68,7 +73,6 @@ else:
 	db = SqliteDatabase("seq_data.db").connect()
 
 db.connect()
-
 
 class EAV(Model):
     Group = CharField(index=True)
@@ -177,31 +181,33 @@ if all([fq_pairs_count.count(x)==2 for x in fq_pairs_count]) != True:
 fastq_pairs = zip(sorted([x for x in fq_set if x.find("1.fq.gz") != -1]), sorted([x for x in fq_set if x.find("2.fq.gz") != -1]))
 
 # Generate MD5's for each fastq
-save_md5(fq_set)
+if process_steps["md5"] == True:
+	save_md5(fq_set)
 
 # Generate sequence fastq statistics using awk
-command = "parallel \"gunzip -c {} | awk -v filename={} '((NR-2)%%4==0){read=\$1; total++; count[read]++}END{for(read in count){if(!max||count[read]>max) {max=count[read];maxRead=read};if(count[read]==1){unique++}};print filename,total,unique,unique*100/total,maxRead,count[maxRead],count[maxRead]*100/total}'\" ::: %s" % ' '.join(fq_set)
-
 if process_steps["fastq_stats"] == True:
-	fq_stats = subprocess.check_output(command, shell=True)
-	output = subprocess.check_output(command, shell=True)
+	command = "parallel \"gunzip -c {} | awk -v filename={} '((NR-2)%%4==0){read=\$1; total++; count[read]++}END{for(read in count){if(!max||count[read]>max) {max=count[read];maxRead=read};if(count[read]==1){unique++}};print filename,total,unique,unique*100/total,maxRead,count[maxRead],count[maxRead]*100/total}'\" ::: %s" % ' '.join(fq_set)
 
-	for i in [x.split(" ") for x in fq_stats.split("\n")[:-1]]:
-		# Save fastq statistics
-		# i[0] -> Filename
-		store_eav("Fastq Statistics", i[0], "Number of Reads", i[1], Tool="Awk")
-		store_eav("Fastq Statistics", i[0], "Unique Reads", i[2], Tool="Awk")
-		store_eav("Fastq Statistics", i[0], "Frequency of Unique Reads", i[3], Tool="Awk")
-		store_eav("Fastq Statistics", i[0], "Most abundant Sequence", i[4], Tool="Awk")
-		store_eav("Fastq Statistics", i[0], "Number of times most abundant sequence occurs", i[5], Tool="Awk")
-		store_eav("Fastq Statistics", i[0], "Frequency of Most Abundant Sequence", i[6], Tool="Awk")
+	if process_steps["fastq_stats"] == True:
+		fq_stats = subprocess.check_output(command, shell=True)
+		output = subprocess.check_output(command, shell=True)
 
-for fq in fq_set:
-	fastq_info = extract_fastq_info(fq)
-	store_eav("Fastq Meta", fq, "Flowcell Lane", fastq_info["flowcell_lane"], Tool="Python Script")
-	store_eav("Fastq Meta", fq, "Index", fastq_info["index"], Tool="Python Script")
-	store_eav("Fastq Meta", fq, "Instrument", fastq_info["instrument"][1:], Tool="Python Script")
-	store_eav("Fastq Meta", fq, "Read Pair", fastq_info["pair"], Tool="Python Script")
+		for i in [x.split(" ") for x in fq_stats.split("\n")[:-1]]:
+			# Save fastq statistics
+			# i[0] -> Filename
+			store_eav("Fastq Statistics", i[0], "Number of Reads", i[1], Tool="Awk")
+			store_eav("Fastq Statistics", i[0], "Unique Reads", i[2], Tool="Awk")
+			store_eav("Fastq Statistics", i[0], "Frequency of Unique Reads", i[3], Tool="Awk")
+			store_eav("Fastq Statistics", i[0], "Most abundant Sequence", i[4], Tool="Awk")
+			store_eav("Fastq Statistics", i[0], "Number of times most abundant sequence occurs", i[5], Tool="Awk")
+			store_eav("Fastq Statistics", i[0], "Frequency of Most Abundant Sequence", i[6], Tool="Awk")
+
+	for fq in fq_set:
+		fastq_info = extract_fastq_info(fq)
+		store_eav("Fastq Meta", fq, "Flowcell Lane", fastq_info["flowcell_lane"], Tool="Python Script")
+		store_eav("Fastq Meta", fq, "Index", fastq_info["index"], Tool="Python Script")
+		store_eav("Fastq Meta", fq, "Instrument", fastq_info["instrument"][1:], Tool="Python Script")
+		store_eav("Fastq Meta", fq, "Read Pair", fastq_info["pair"], Tool="Python Script")
 
 #=================#
 # Align Genome    #
@@ -269,7 +275,8 @@ if process_steps["align"] == True:
 	os.system("samtools index %s.bam" % sample)
 
 # Generate Depth and coverage statistics of the merged bam
-calc_bam_depth_coverage("BAM Merged Statistics", reference, sample, by_chr = True)
+if process_steps["bam_stats"] == True:
+	calc_bam_depth_coverage("BAM Merged Statistics", reference, sample, by_chr = True)
 # Store Bam Statistics
 samtools_stats = subprocess.check_output( "samtools stats %s.bam | grep '^SN'" % sample , shell=True )
 for line in [x.split('\t')[1:3] for x in samtools_stats.split("\n")[:-1]]:
@@ -290,6 +297,17 @@ save_md5([sample + ".bam"])
 # Variant Calling    #
 #====================#
 
+# Generate and store bcf stats
+def gen_bcf_stats(bcf, sample, description, Sub_Entity):
+	# Generate stats - Following Het Polarization, Overwrites previous stat file.
+	tmp =  tempfile.NamedTemporaryFile().name
+	os.system("bcftools stats --samples - %s > %s" % (bcf, tmp))
+
+	# Get variant statistics.
+	for i in import_stats("%s" % (tmp)):
+		store_eav("BCF Statistics", "%s.%s.bcf" % (sample, description), i[0], i[1], Super_Entity = sample, Sub_Entity = Sub_Entity, Tool="bcftools")
+
+
 # Fetch contigs
 contigs = {x.split("\t")[0]:int(x.split("\t")[1]) for x in file("../reference/%s/%s.fa.fai" % (reference, reference), 'r').read().split("\n")[:-1]}
 
@@ -304,21 +322,20 @@ if process_steps["call_variants"] == True:
 	# Remove temporary files
 	os.system("rm -f raw.%s.*" % sample)
 
-# Generate stats - No filter
-os.system("bcftools stats --samples - %s.no_filter.bcf > %s.tmp.stats.txt" % (sample, sample))
 
-# Get variant statistics.
-for i in import_stats("%s.tmp.stats.txt" % (sample)):
-	store_eav("BCF Statistics", "%s.no_filter.bcf" % sample, i[0], i[1], Super_Entity = sample, Sub_Entity = "No Filtering", Tool="bcftools")
+gen_bcf_stats("%s.no_filter.bcf" %  sample, sample, "No Filter", "")
 
-save_md5([sample + ".no_filter.bcf"])
 
 #======================#
 # Variant Filtering    #
 #======================#
 
-### Heterozygote Polarization
+### LCR Filtering
+os.system("bcftools view -O b -R ../LCR_Region/{LCR_File} {input_file}.no_filter.bcf > {output_file}.LCR.bcf".format(input_file = sample , output_file = sample, LCR_File = LCR_File ))
 
+gen_bcf_stats("%s.LCR.bcf" % sample, sample, "LCR Filtering", LCR_File)
+
+### Heterozygote Polarization
 os.system("bcftools view {input_file} | python het_polarization.py | bcftools view -O b > {output_file}.het_polarization.bcf".format(input_file = sample + ".no_filter.bcf", output_file = sample))
 
 # Pull in short log (summarizes het polarization stats, and save)
@@ -329,12 +346,8 @@ for i in [x.split(":") for x in file(shortlog, 'r').read().split(",")]:
 # Remove the shortlog
 os.remove(shortlog)
 
-# Generate stats - Following Het Polarization, Overwrites previous stat file.
-os.system("bcftools stats --samples - %s.het_polarization.bcf > %s.tmp.stats.txt" % (sample, sample))
 
-# Get variant statistics.
-for i in import_stats("%s.tmp.stats.txt" % (sample)):
-	store_eav("BCF Statistics", "%s.het_polarization.bcf" % sample, i[0], i[1], Super_Entity = sample, Sub_Entity = "Heterozygote Polarization", Tool="bcftools")
+### Quality and Depth
 
 
 #=====================#

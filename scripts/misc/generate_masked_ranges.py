@@ -42,7 +42,7 @@ with input_fasta as f:
             if chrom is not None:
                 # Print end coordinate
                 print '\t'.join([chrom ,str(start), str(n)])
-                start, end = 0, 0
+                start, end, state  = 0, 1, 0
             n = 0 # Reset character
             chrom = line.split(" ")[0].replace(">","")
             # If user specifies, replace chromosome as well
@@ -53,7 +53,7 @@ with input_fasta as f:
                 if state == 0 and char == "N":
                     state = 1
                     start = n
-                elif state == 1 and char != "N" and start != end:
+                elif state == 1 and char != "N":
                     state = 0
                     end = n
                     print '\t'.join([chrom ,str(start), str(end)])
