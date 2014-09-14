@@ -1,6 +1,6 @@
 #!/bin/bash
 ## LCR 1
-cd ../../data/ancillary/
+cd ../../data/LCR_Region/
 wget 'http://hgdownload.soe.ucsc.edu/goldenPath/ce10/database/rmsk.txt.gz' -O LCR_rmsk.txt.gz
 gunzip -kfc LCR_rmsk.txt.gz | grep 'Low_complexity' | cut -f 6,7,8 > LCR_ce10_rmsk.bed
 rm LCR_rmsk.txt.gz
@@ -17,3 +17,7 @@ wget 'ftp://ftp.wormbase.org/pub/wormbase/releases/WS220/species/c_elegans/c_ele
 python ../../scripts/misc/generate_masked_ranges.py c_elegans.WS220.genomic_masked.fa.gz CHROMSOME_ chr > WS220.wormbase.masked.bed
 
 ## Generate Stats on repeat masking, and store in database.
+bedtools genomecov -i ce10.ucsc.masked.bed -g ce10.genome > ce10.ucsc.masked.genomecov.statsitics.txt
+bedtools genomecov -i ce10.ucsc.masked.bed -g ce10.genome > WS220.wormbase.masked.genomecov.statistics.txt
+
+rm c_elegans.WS220.genomic_masked.fa.gz
