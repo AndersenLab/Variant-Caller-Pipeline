@@ -61,7 +61,7 @@ process_steps = {
 }
 
 ## LCR File
-LCR_File = "WS220.wormbase.masked.bed"
+LCR_File = "WS220.wormbase.masked.bed.gz"
 
 #==========#
 # Database #
@@ -334,10 +334,12 @@ gen_bcf_stats("%s.no_filter.bcf" %  sample, sample, "No Filter", "No Filter")
 #
 # LCR Filtering
 #
+# Reheader, and add LCR Region Filter
+command = "bcftools view %s.no_filter.bcf | awk 'NR == 2{ print \"##FILTER=<ID=LCR_Region,Description=\"Low Complexity Region\">\"} { print }' | bcftools annotate -O b -a ../LCR_Region/%s -c \"CHROM,FROM,TO,FILTER\" > %s.LCR.bcf" % (sample, LCR_File, sample)
+print command
+os.system(command)
 
-# rewrite to apply as filter, and not remove variants...
-
-os.system("bcftools view -O b -R ../LCR_Region/{LCR_File} {input_file}.no_filter.bcf > {output_file}.LCR.bcf".format(input_file = sample , output_file = sample, LCR_File = LCR_File ))
+# Generate file with LCR Region Variants
 gen_bcf_stats("%s.LCR.bcf" % sample, sample, "LCR Filtering", LCR_File)
 
 #
@@ -360,22 +362,20 @@ gen_bcf_stats("%s.het_polarization.bcf" % sample, sample, "Heterozygous Polariza
 # Get Average Depth
 average_depth = float(subprocess.check_output("bcftools query -f '%%DP\\n' %s | awk '{ total += $1; count++ } END { avg=(total/count);  print (avg) }'" % (sample + ".het_polarization.bcf"), shell=True).strip())
 depth_threshold = float(average_depth + 3*math.sqrt(average_depth))
-store_eav("BCF Statistics", "%s.het_polarization.bcf" % sample, "Average Variant Depth", average_depth, Tool="Awk")
-store_eav("BCF Statistics", "%s.het_polarization.bcf" % sample, "Depth Threshold", depth_threshold, Tool = "Python + Awk")
+store_eav("BCF Statistics", "%s.het_polarization.bcf" % sample, "Average Variant Depth", average_depth, Super_Entity = sample, Tool="Awk")
+store_eav("BCF Statistics", "%s.het_polarization.bcf" % sample, "Depth Threshold", depth_threshold, Super_Entity = sample, Tool = "Python + Awk")
 
 depth_threshold = 1
 #
 # Filter Depth
 #
-print "bcftools filter -O b -s 'Depth' --exclude 'DP<{depth_threshold}' {input_file}.het_polarization.bcf > {output_file}.dp.bcf".format(input_file = sample , output_file = sample, depth_threshold = depth_threshold)
 
-os.system("bcftools filter -O b --mode +x  -s 'Fail Depth' --exclude 'DP>{depth_threshold}' {input_file}.het_polarization.bcf > {output_file}.dp.bcf".format(input_file = sample , output_file = sample, depth_threshold = depth_threshold))
+os.system("bcftools filter -O b --mode +x  -s 'FailDepth' --exclude 'DP>{depth_threshold}' {input_file}.het_polarization.bcf > {output_file}.dp.bcf".format(input_file = sample , output_file = sample, depth_threshold = depth_threshold))
 gen_bcf_stats("%s.dp.bcf" % sample, sample, "Depth Filter", "Depth")
 
 #
 # Filter Quality
 #
-print "bcftools filter -O b -s 'Fail Quality' --exclude '%QUAL<{qual_threshold}' {input_file}.dp.bcf > {output_file}.qual.bcf".format(input_file = sample , output_file = sample, qual_threshold = 30)
 
 os.system("bcftools filter -O b --mode +x -s 'Fail Quality' --exclude '%QUAL<{qual_threshold}' {input_file}.dp.bcf > {output_file}.qual.bcf".format(input_file = sample , output_file = sample, qual_threshold = 30))
 gen_bcf_stats("%s.qual.bcf" % sample, sample, "Quality Filter", "Quality")
