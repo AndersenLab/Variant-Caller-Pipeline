@@ -31,18 +31,17 @@ else:
     raise SystemExit
 
 
-l, n, state = 0, 0, 0 # line, character, state (0=Out of gap; 1=In Gap)
+n, state = 0, 0 # line, character, state (0=Out of gap; 1=In Gap)
 chrom, start, end = None, None, None
 
 with input_fasta as f:
     for line in f:
         line = line.replace("\n","")
         if line.startswith(">"):
-            # Print end of chromosome
-            if chrom is not None:
-                # Print end coordinate
+            # Print end range
+            if state == 1:
                 print '\t'.join([chrom ,str(start), str(n)])
-                start, end, state  = 0, 1, 0
+                start, end, state  = 0, 0, 0
             n = 0 # Reset character
             chrom = line.split(" ")[0].replace(">","")
             # If user specifies, replace chromosome as well
@@ -61,4 +60,3 @@ with input_fasta as f:
                     pass
 
                 n += 1 # First base is 0 in bed format.
-            l += 1
