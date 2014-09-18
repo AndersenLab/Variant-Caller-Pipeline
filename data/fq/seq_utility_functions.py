@@ -75,7 +75,53 @@ def import_stats(stat_file):
 				data += zip(keys,vals)
 	return data
 
-#print import_stats("JU1395.tmp.stats.txt")
+
+def calculate_coverage(bam, mtchr = None):
+	""" 
+		Calculates Coverage Statistics for a given Bam File
+	"""
+	# Check to see if file exists
+	if os.path.isfile(bam) == False:
+		raise Exception("Bam file does not exist")
+	header = subprocess.check_output("samtools view -H %s" % bam, shell = True)
+	# Extract contigs from header and convert contigs to integers
+	contigs = re.findall("@SQ	SN:(?P<chrom>[A-Za-z0-9]+)\WLN:(?P<length>[0-9]+)", header)
+	contigs = {x[0]:int(x[1]) for x in contigs}
+	print contigs
+	# Calculate Coverage for each chromosome individually
+	coverage_dict = {}
+	for c in contigs.keys():
+		command = "samtools depth -r %s:1-5000 %s | awk '{sum+=$3;cnt++}END{print cnt \"\t\" sum}'" % (c, bam)
+		coverage_dict[c] = {}
+		coverage_dict[c]["Bases Mapped"], coverage_dict[c]["Sum of Depths"] = map(int,subprocess.check_output(command, shell = True).strip().split("\t"))
+		coverage_dict[c]["Breadth of Coverage"] = coverage_dict[c]["Bases Mapped"] / float(contigs[c])
+		coverage_dict[c]["Depth of Coverage"] = coverage_dict[c]["Sum of Depths"] / float(contigs[c])
+		coverage_dict[c]["Length"] = int(contigs[c])
+
+	# Calculate Genome Wide Breadth of Coverage and Depth of Coverage
+	genome_length = float(sum(contigs.values()))
+	coverage_dict["genome"] = {}
+	coverage_dict["genome"]["Length"] = int(genome_length)
+	coverage_dict["genome"]["Bases Mapped"] = sum([x["Bases Mapped"] for k, x in coverage_dict.iteritems() if k != "genome"])
+	coverage_dict["genome"]["Sum of Depths"] = sum([x["Sum of Depths"] for k, x in coverage_dict.iteritems() if k != "genome"])
+	coverage_dict["genome"]["Breadth of Coverage"] = sum([x["Breadth of Coverage"] for k, x in coverage_dict.iteritems() if k != "genome"]) / genome_length
+	coverage_dict["genome"]["Depth of Coverage"] = sum([x["Sum of Depths"] for k, x in coverage_dict.iteritems() if k != "genome"]) / genome_length
+
+	if mtchr != None:
+		# Calculate nuclear breadth of coverage and depth of coverage
+		ignore_contigs = [mtchr, "genome", "nuclear"]
+		coverage_dict["nuclear"] = {}
+		print pp(coverage_dict)
+		coverage_dict["nuclear"]["Length"] = sum([x["Length"] for k,x in coverage_dict.iteritems() if k not in ignore_contigs ])
+		coverage_dict["nuclear"]["Bases Mapped"] = sum([x["Bases Mapped"] for k, x in coverage_dict.iteritems() if k not in ignore_contigs])
+		coverage_dict["nuclear"]["Sum of Depths"] = sum([x["Sum of Depths"] for k, x in coverage_dict.iteritems() if k not in ignore_contigs])
+		coverage_dict["nuclear"]["Breadth of Coverage"] = sum([x["Breadth of Coverage"] for k, x in coverage_dict.iteritems() if k not in ignore_contigs]) / genome_length
+		coverage_dict["nuclear"]["Depth of Coverage"] = sum([x["Sum of Depths"] for k, x in coverage_dict.iteritems() if k not in ignore_contigs]) / genome_length
+
+		# Calculate the ratio of mtDNA depth to nuclear depth
+		mt_ratio = coverage_dict[mtchr]["Sum of Depths"] / float(coverage_dict["nuclear"]["Depth of Coverage"])
+	return coverage_dict
+
 
 def save_md5(files = [], type = ""):
 	md5 = subprocess.check_output("parallel %s ::: %s" % (md5_system[system_type], ' '.join(files)), shell=True)
