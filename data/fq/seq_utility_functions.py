@@ -1,4 +1,4 @@
-import gzip, re, subprocess
+import gzip, re, subprocess, os
 from peewee import *
 from itertools import groupby as g
 
@@ -10,6 +10,7 @@ from itertools import groupby as g
 
 def most_common(L):
   return max(g(sorted(L)), key=lambda(x, v):(len(list(v)),-L.index(x)))[0]
+
 
 def extract_fastq_info(fastq):
 	"""
@@ -76,7 +77,7 @@ def import_stats(stat_file):
 	return data
 
 
-def calculate_coverage(bam, mtchr = None):
+def coverage(bam, mtchr = None):
 	""" 
 		Calculates Coverage Statistics for a given Bam File
 	"""
@@ -87,11 +88,11 @@ def calculate_coverage(bam, mtchr = None):
 	# Extract contigs from header and convert contigs to integers
 	contigs = re.findall("@SQ	SN:(?P<chrom>[A-Za-z0-9]+)\WLN:(?P<length>[0-9]+)", header)
 	contigs = {x[0]:int(x[1]) for x in contigs}
-	print contigs
 	# Calculate Coverage for each chromosome individually
 	coverage_dict = {}
 	for c in contigs.keys():
-		command = "samtools depth -r %s:1-5000 %s | awk '{sum+=$3;cnt++}END{print cnt \"\t\" sum}'" % (c, bam)
+		command = "samtools depth -r %s %s | awk '{sum+=$3;cnt++}END{print cnt \"\t\" sum}'" % (c, bam)
+		print command
 		coverage_dict[c] = {}
 		coverage_dict[c]["Bases Mapped"], coverage_dict[c]["Sum of Depths"] = map(int,subprocess.check_output(command, shell = True).strip().split("\t"))
 		coverage_dict[c]["Breadth of Coverage"] = coverage_dict[c]["Bases Mapped"] / float(contigs[c])
@@ -111,7 +112,6 @@ def calculate_coverage(bam, mtchr = None):
 		# Calculate nuclear breadth of coverage and depth of coverage
 		ignore_contigs = [mtchr, "genome", "nuclear"]
 		coverage_dict["nuclear"] = {}
-		print pp(coverage_dict)
 		coverage_dict["nuclear"]["Length"] = sum([x["Length"] for k,x in coverage_dict.iteritems() if k not in ignore_contigs ])
 		coverage_dict["nuclear"]["Bases Mapped"] = sum([x["Bases Mapped"] for k, x in coverage_dict.iteritems() if k not in ignore_contigs])
 		coverage_dict["nuclear"]["Sum of Depths"] = sum([x["Sum of Depths"] for k, x in coverage_dict.iteritems() if k not in ignore_contigs])
@@ -119,8 +119,14 @@ def calculate_coverage(bam, mtchr = None):
 		coverage_dict["nuclear"]["Depth of Coverage"] = sum([x["Sum of Depths"] for k, x in coverage_dict.iteritems() if k not in ignore_contigs]) / genome_length
 
 		# Calculate the ratio of mtDNA depth to nuclear depth
-		mt_ratio = coverage_dict[mtchr]["Sum of Depths"] / float(coverage_dict["nuclear"]["Depth of Coverage"])
-	return coverage_dict
+		coverage_dict["genome"]["mtDNA:Nuclear Depth of Coverage Ratio"] = coverage_dict[mtchr]["Sum of Depths"] / float(coverage_dict["nuclear"]["Depth of Coverage"])
+	
+	coverage = []
+	for k,v in coverage_dict.items():
+		for x in v.items():
+			coverage += [(k,x[0], x[1])]
+	return coverage
+
 
 
 def save_md5(files = [], type = ""):
