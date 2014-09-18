@@ -123,47 +123,6 @@ def save_md5(files = [], type = ""):
 		# Check File Hashes
 		save_eav(i[0], "File Hash", i[1], Entity_Group = "MD5 Hash", Tool = "MD5")
 
-#===========#
-# Functions #
-#===========#
-
-def calc_depth_coverage(Entity_Group, bam, contig_size, chromosome = "genome", mt_chr = "chrM"):
-	eav_args = {"Sub_Entity": bam, "Sub_Attribute": chromosome, "Tool" : "Samtools + Awk", "Entity_Group" : Entity_Group}
-	
-	if chromosome == "genome":
-		region = ""
-	elif chromosome == "nuclear":
-		region = "$1 != \"%s\"" % mt_chr
-	else:
-		region = "$1 == \"%s\"" % chromosome
-
-	command = "samtools depth %s.bam | awk '%s{sum+=$3;cnt++}END{print cnt \"\t\" sum}'" % (bam.replace(".bam",""), region)
-	covered_bases, sum_depths = subprocess.check_output(command, shell = True).replace("\n", "").split("\t")
-	empirical_coverage = float(sum_depths)/contig_size[chromosome]
-	save_eav(bam, "Coverage", empirical_coverage, **eav_args)
-	save_eav(bam, "Bases Mapped", covered_bases, **eav_args)
-	return empirical_coverage
-
-def coverage(Entity_Group, reference, bam, by_chr = False, mt_chr = "chrM"):
-	""" 
-		Calculates the average Depth, Covered Bases, and Coverage of a given Bam File
-	"""
-	# Fetch Chromosomes for use in generating coverage
-	contig_size = {x.split("\t")[0]:int(x.split("\t")[1]) for x in file("../reference/%s/%s.fa.fai" % (reference, reference), 'r').read().split("\n")[:-1]}
-	contig_size["genome"] = sum(contig_size.values())
-	contig_size["nuclear"] = sum(contig_size.values()) - contig_size[mt_chr] - contig_size["genome"]
-
-	# Calculate Empirical Coverage for full genome.
-	if by_chr == True:
-		depth_dict = {}
-		for contig in contig_size.keys():
-			depth_dict[contig] = calc_depth_coverage(Entity_Group, bam, contig_size, contig, mt_chr)
-		# Generate ratio mt avg Depth to Nuclear avg Depth
-		save_eav(bam + ".bam", "(mtDNA/Nuclear) Depth Ratio", depth_dict[mt_chr]/float(depth_dict["nuclear"]), Entity_Group = Entity_Group,  Sub_Attribute = "Ratio", Tool = "Samtools + Awk")
-	else:
-		calc_depth_coverage(Entity_Group, bam, contig_size, "genome")
-
-
 #=================#
 # Process Fastq's #
 #=================#
@@ -253,15 +212,20 @@ if process_steps["align"] == True:
 		for record in dup_report:
 			save_eav(bam_name + ".bam", record[0], record[1], Entity_Group = "Duplication Statistics", Tool="PICARD")
 
+		# Index Bam
+		os.system("samtools index %s.bam" % bam_name)
+
 		# Store Bam Statistics
-		samtools_stats = subprocess.check_output( "samtools stats %s.bam | grep '^SN'" % bam_name , shell=True )
+		samtools_stats = subprocess.check_output("samtools stats %s.bam | grep '^SN'" % bam_name , shell=True )
 		for line in [x.split('\t')[1:3] for x in samtools_stats.split("\n")[:-1]]:
-			save_eav(bam_name + ".bam", line[0].replace(":","").title(), line[1],Entity_Group = "BAM Statistics", Tool = "Samtools")
+			save_eav(bam_name + ".bam", line[0].replace(":","").title(), line[1],Entity_Group = "BAM Statistics", Tool = "Samtools Stats")
 
 		# Generate Bam Depth and Coverage Statistics and save to database.
-		coverage("BAM Statistics", reference, bam_name)
-
+		for i in coverage(bam_name + ".bam"):
+			save_eav(bam_name + ".bam", i[1], i[2], Sub_Entity=i[0], Entity_Group = "Bam Statistics", Tool = "Samtools Depth + Python")
+		
 		# Generate md5 of bam and store
+		print bam_name
 		save_md5([bam_name + ".bam"])
 
 		# Remove temporary files
@@ -280,8 +244,9 @@ if process_steps["align"] == True:
 
 # Generate Depth and coverage statistics of the merged bam
 if process_steps["bam_stats"] == True:
-	coverage("BAM Merged Statistics", reference, sample + ".bam", by_chr = True)
-
+	for i in coverage(bam_name + ".bam", "chrM"):
+		save_eav(sample + ".bam", i[1], i[2], Sub_Entity=i[0], Entity_Group = "Bam Merged Statistics", Tool = "Samtools Depth + Python")
+		
 	# Store Bam Statistics
 	samtools_stats = subprocess.check_output( "samtools stats %s.bam | grep '^SN'" % sample , shell=True )
 	line_dict = {}
@@ -290,9 +255,10 @@ if process_steps["bam_stats"] == True:
 		line_dict[attribute] = line[1] 
 		save_eav(sample + ".bam", attribute, line[1], Entity_Group = "BAM Merged Statistics", Tool = "Samtools")
 
-	# Calculate Coverage as (# Reads * Avg. Read Length / Lenght Genome)
-	calc_coverage =float(line_dict["Reads Mapped"]) * float(line_dict["Average Length"]) / genome_length
+	# Also Calculate Coverage as (# Reads * Avg. Read Length / Lenght Genome)
+	calc_coverage = float(line_dict["Reads Mapped"]) * float(line_dict["Average Length"]) / genome_length
 	save_eav(sample + ".bam", "Coverage (Calculated)", calc_coverage, Entity_Group = "BAM Merged Statistics", Sub_Attribute = "(Reads Mapped * Avg. Read Length / Genome Length)", Tool = "Samtools")
+
 
 # Index Merged Bam File, and remove intermediates.
 for b in bam_set:
