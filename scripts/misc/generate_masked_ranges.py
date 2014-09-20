@@ -60,3 +60,8 @@ with input_fasta as f:
                     pass
 
                 n += 1 # First base is 0 in bed format.
+
+# Print end of range if done.
+if state == 1:
+            print '\t'.join([chrom ,str(start), str(n)])
+            start, end, state  = 0, 0, 0

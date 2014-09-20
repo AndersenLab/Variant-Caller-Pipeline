@@ -244,7 +244,7 @@ if process_steps["align"] == True:
 
 # Generate Depth and coverage statistics of the merged bam
 if process_steps["bam_stats"] == True:
-	for i in coverage(bam_name + ".bam", "chrM"):
+	for i in coverage(sample + ".bam", "chrM"):
 		save_eav(sample + ".bam", i[1], i[2], Sub_Entity=i[0], Entity_Group = "Bam Merged Statistics", Tool = "Samtools Depth + Python")
 		
 	# Store Bam Statistics
