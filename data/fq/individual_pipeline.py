@@ -54,7 +54,7 @@ system_type =  os.uname()[0]
 process_steps = {
 	"debug_sqlite" : True,    # Uses an alternative database.
 	"md5" : True,            # Runs an MD5 hash on every file and saves to database
-	"fastq_stats" : False,     # Produce fastq stats on number of reads, unique reads, etc.
+	"fastq_stats" : True,     # Produce fastq stats on number of reads, unique reads, etc.
 	"align" : True,
 	"bam_stats" : True,
 	"call_variants" : True
@@ -116,12 +116,12 @@ def save_eav(Entity, Attribute, Value, Entity_Group=None, Sub_Entity=None, Sub_A
 	except:
 		record.update()
 
-def save_md5(files = [], type = ""):
+def save_md5(files = [], Entity = ""):
 	md5 = subprocess.check_output("parallel %s ::: %s" % (md5_system[system_type], ' '.join(files)), shell=True)
 	m = re.findall('MD5 \((.*)\) = (.*)', md5)
 	for i in m:
 		# Check File Hashes
-		save_eav(i[0], "File Hash", i[1], Entity_Group = "MD5 Hash", Tool = "MD5")
+		save_eav(Entity, "File Hash", i[1], Entity_Group = "MD5 Hash", Sub_Entity= i[0], Tool = "MD5")
 
 #=================#
 # Process Fastq's #
@@ -129,7 +129,9 @@ def save_md5(files = [], type = ""):
 
 args = sys.argv[1:] # Used to specify a strain name for fq's that will be aligned.
 
-fq_set = glob.glob("*-%s-*fq.gz" % args[0])
+strain = args[0]
+
+fq_set = glob.glob("*-%s-*fq.gz" % strain)
 
 # Do we have fqs
 if (len(fq_set) == 0):
@@ -145,7 +147,7 @@ fastq_pairs = zip(sorted([x for x in fq_set if x.find("1.fq.gz") != -1]), sorted
 
 # Generate MD5's for each fastq
 if process_steps["md5"] == True:
-	save_md5(fq_set)
+	save_md5(fq_set, strain)
 
 # Generate sequence fastq statistics using awk
 if process_steps["fastq_stats"] == True:
@@ -158,19 +160,19 @@ if process_steps["fastq_stats"] == True:
 		for i in [x.split(" ") for x in fq_stats.split("\n")[:-1]]:
 			# Save fastq statistics
 			# i[0] -> Filename
-			save_eav(i[0], "Number of Reads", i[1], Entity_Group = "Fastq Statistics", Tool="Awk")
-			save_eav(i[0], "Unique Reads", i[2], Entity_Group = "Fastq Statistics", Tool="Awk")
-			save_eav(i[0], "Frequency of Unique Reads", i[3], Entity_Group = "Fastq Statistics", Tool="Awk")
-			save_eav(i[0], "Most abundant Sequence", i[4], Entity_Group = "Fastq Statistics", Tool="Awk")
-			save_eav(i[0], "Number of times most abundant sequence occurs", i[5], Entity_Group = "Fastq Statistics", Tool="Awk")
-			save_eav(i[0], "Frequency of Most Abundant Sequence", i[6], Entity_Group = "Fastq Statistics", Tool="Awk")
+			save_eav(strain, "Number of Reads", i[1], Entity_Group = "Fastq Statistics", Sub_Entity = i[0], Tool="Awk")
+			save_eav(strain, "Unique Reads", i[2], Entity_Group = "Fastq Statistics", Sub_Entity = i[0], Tool="Awk")
+			save_eav(strain, "Frequency of Unique Reads", i[3], Entity_Group = "Fastq Statistics", Sub_Entity = i[0],  Tool="Awk")
+			save_eav(strain, "Most abundant Sequence", i[4], Entity_Group = "Fastq Statistics",Sub_Entity = i[0],  Tool="Awk")
+			save_eav(strain, "Number of times most abundant sequence occurs", i[5], Entity_Group = "Fastq Statistics", Sub_Entity = i[0],  Tool="Awk")
+			save_eav(strain, "Frequency of Most Abundant Sequence", i[6], Entity_Group = "Fastq Statistics", Sub_Entity = i[0], Tool="Awk")
 
 	for fq in fq_set:
 		fastq_info = extract_fastq_info(fq)
-		save_eav("Flowcell Lane", fq, fastq_info["flowcell_lane"], Entity_Group="Fastq_Meta", Tool="Python Script")
-		save_eav("Index", fq, fastq_info["index"], Entity_Group =  "Fastq_Meta",  Tool="Python Script")
-		save_eav("Instrument", fq, fastq_info["instrument"][1:], Entity_Group = "Fastq_Meta", Tool="Python Script")
-		save_eav("Read Pair", fq, fastq_info["pair"], Entity_Group =  "Fastq_Meta",  Tool="Python Script")
+		save_eav(strain, "Flowcell Lane",  fastq_info["flowcell_lane"], Entity_Group="Fastq_Meta", Sub_Entity= fq,  Tool="Python Script")
+		save_eav(strain, "Index", fastq_info["index"], Entity_Group =  "Fastq_Meta",  Sub_Entity= fq,  Tool="Python Script")
+		save_eav(strain, "Instrument", fastq_info["instrument"][1:], Entity_Group = "Fastq_Meta", Sub_Entity= fq, Tool="Python Script")
+		save_eav(strain, "Read Pair", fastq_info["pair"], Entity_Group =  "Fastq_Meta",  Sub_Entity= fq, Tool="Python Script")
 
 #=================#
 # Align Genome    #
