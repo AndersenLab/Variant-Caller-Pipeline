@@ -56,29 +56,17 @@ scripts_dir = "../../scripts/pipeline/"
 # Get Arguments
 args = sys.argv[1:] # Used to specify a strain name for fq's that will be aligned.
 
-strain = args[0]
-if len(sys.argv) > 2:
-	if args[1] == "--get-variants":
-		# The dictionary process_steps is used to skip steps for debugging purposes.
-		process_steps = {
-			"debug_sqlite" : True,    # Uses an alternative database.
-			"md5" : True,            # Runs an MD5 hash on every file and saves to database
-			"fastq_stats" : True,     # Produce fastq stats on number of reads, unique reads, etc.
-			"align" : True,
-			"bam_stats" : True,
-			"call_variants" : True,
-			"add_to_variant_list" : True
-		}
-else:
-	process_steps = {
+
+process_steps = {
 		"debug_sqlite" : True,    # Uses an alternative database.
 		"md5" : True,            # Runs an MD5 hash on every file and saves to database
 		"fastq_stats" : True,     # Produce fastq stats on number of reads, unique reads, etc.
 		"align" : True,
 		"bam_stats" : True,
 		"call_variants" : True,
-		"add_to_variant_list" : True
-	}
+
+}
+
 #=========#
 # Options #
 #=========#
@@ -295,6 +283,7 @@ save_md5([sample + ".bam"], Entity = strain)
 os.system("mv %s.bam ../bam/%s.bam" % (strain, sample))
 os.system("mv %s.bam.bai ../bam/%s.bam.bai" % (strain, sample))
 os.chdir("../bam/") # Change Dirs into bam directory.
+
 #====================#
 # Variant Calling    #
 #====================#
@@ -316,65 +305,16 @@ contigs = {x.split("\t")[0]:int(x.split("\t")[1]) for x in file("../reference/%s
 if process_steps["call_variants"] == True:
 	command = "parallel 'samtools mpileup -t DP,DV,DP4,SP -g -f ../reference/%s/%s.fa -r {} %s.bam | bcftools call --format-fields GQ,GP -c -v > raw.%s.{}.bcf' ::: %s" % (reference, reference, strain, strain, ' '.join(contigs.keys()))
 	os.system(command)
-	os.system("echo %s | bcftools concat -O b `ls -v raw.%s.*.bcf` > %s.no_filter.bcf" % (contigs.keys(), sample , sample.replace(".txt","")))
+	os.system("echo %s | bcftools concat -O b `ls -v raw.%s.*.bcf` > %s.single.bcf" % (contigs.keys(), sample , sample.replace(".txt","")))
 	
 	# Index
-	os.system("bcftools index -f %s.no_filter.bcf" % sample)
+	os.system("bcftools index -f %s.single.bcf" % sample)
 
 	# Remove temporary files
 	os.system("rm -f raw.%s.*" % sample)
 
 
-gen_bcf_stats(strain, "%s.no_filter.bcf" %  strain, "No Filter", "No Filter")
+gen_bcf_stats(strain, "%s.single.bcf" %  strain, "Single", "No Filter")
 
-
-###### SPLIT POINT ########
-
-#======================#
-# Variant Filtering    #
-#======================#
-
-Entity_Group = "BCF Variant Filtering"
-
-#
-# LCR Filtering
-#
-# Reheader, and add LCR Region Filter
-command = "bcftools view %s.no_filter.bcf | awk 'NR == 2{ print \"##FILTER=<ID=LCR_Region,Description=\"Low Complexity Region\">\"} { print }' | bcftools annotate -O b -a ../LCR_Region/%s -c \"CHROM,FROM,TO,FILTER\" > %s.LCR.bcf" % (strain, LCR_File, sample)
-os.system(command)
-
-#
-# Heterozygote Polarization
-#
-
-os.system("bcftools view {input_file}.LCR.bcf | python {scripts_dir}het_polarization.py | bcftools view -O b > {output_file}.het_polarization.bcf".format(input_file = sample , output_file = sample, scripts_dir = scripts_dir))
-
-# Pull in short log (summarizes het polarization stats, and save)
-shortlog = "het_polarization_log.shortlog.%s.txt" % sample
-for i in [x.split(":") for x in file(shortlog, 'r').read().split(",")]:
-	save_eav(strain, i[0],  i[1], Entity_Group = Entity_Group, Sub_Entity = "Heterozygous Polarization",  Tool="Python Script")
-
-# Remove the shortlog
-os.remove(shortlog)
-
-# Get Average Depth
-average_depth = float(subprocess.check_output("bcftools query -f '%%DP\\n' %s | awk '{ total += $1; count++ } END { avg=(total/count);  print (avg) }'" % (sample + ".het_polarization.bcf"), shell=True).strip())
-depth_threshold = float(average_depth + 3*math.sqrt(average_depth))
-save_eav(strain, "Average Variant Depth", average_depth, Entity_Group = Entity_Group, Tool="Awk")
-save_eav(strain, "Depth Threshold", depth_threshold, Entity_Group = Entity_Group, Tool = "Python + Awk")
-
-depth_threshold = 1
-#
-# Filter Depth
-#
-
-os.system("bcftools filter -O b --mode +x  -s 'FailDepth' --exclude 'DP>{depth_threshold}' {input_file}.het_polarization.bcf > {output_file}.dp.bcf".format(input_file = sample , output_file = strain, depth_threshold = depth_threshold))
-
-#
-# Filter Quality
-#
-
-os.system("bcftools filter -O b --mode +x -s 'Fail Quality' --exclude '%QUAL<{qual_threshold}' {input_file}.dp.bcf > {output_file}.qual.bcf".format(input_file = sample , output_file = strain, qual_threshold = 30))
-
-gen_bcf_stats(strain, "%s.qual.bcf" % strain, "Quality Filter", "Quality")
-
+os.system("mv %s.single.bcf ../individual_bcf/%s.single.bcf" % (strain, strain))
+os.system("bcftools index ../individual_bcf/%s.single.bcf" % (strain))
