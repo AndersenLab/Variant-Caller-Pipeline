@@ -25,7 +25,7 @@
 
 
 #SBATCH --mail-user=dec@u.northwestern.edu
-#SBATCH --workdir=/lscr2/andersenlab/dec211/data
+#SBATCH --workdir=/lscr2/andersenlab/dec211/data/fq
 
 
 #=================#
@@ -50,16 +50,35 @@ from peewee import *
 # Determine system type:
 system_type =  os.uname()[0]
 
-# The dictionary process_steps is used to skip steps for debugging purposes.
-process_steps = {
-	"debug_sqlite" : True,    # Uses an alternative database.
-	"md5" : True,            # Runs an MD5 hash on every file and saves to database
-	"fastq_stats" : True,     # Produce fastq stats on number of reads, unique reads, etc.
-	"align" : True,
-	"bam_stats" : True,
-	"call_variants" : True
-}
+# Setup Scripts Dir
+scripts_dir = "../../scripts/pipeline/"
 
+# Get Arguments
+args = sys.argv[1:] # Used to specify a strain name for fq's that will be aligned.
+
+strain = args[0]
+if len(sys.argv) > 2:
+	if args[1] == "--get-variants":
+		# The dictionary process_steps is used to skip steps for debugging purposes.
+		process_steps = {
+			"debug_sqlite" : True,    # Uses an alternative database.
+			"md5" : True,            # Runs an MD5 hash on every file and saves to database
+			"fastq_stats" : True,     # Produce fastq stats on number of reads, unique reads, etc.
+			"align" : True,
+			"bam_stats" : True,
+			"call_variants" : True,
+			"add_to_variant_list" : True
+		}
+else:
+	process_steps = {
+		"debug_sqlite" : True,    # Uses an alternative database.
+		"md5" : True,            # Runs an MD5 hash on every file and saves to database
+		"fastq_stats" : True,     # Produce fastq stats on number of reads, unique reads, etc.
+		"align" : True,
+		"bam_stats" : True,
+		"call_variants" : True,
+		"add_to_variant_list" : True
+	}
 #=========#
 # Options #
 #=========#
@@ -78,9 +97,9 @@ genome_length = int(file("../reference/%s/%s.fa.amb" % (reference, reference), '
 
 # Drop tables if specified.
 if process_steps["debug_sqlite"] == True:
-	db = SqliteDatabase('DEBUG_seq_data.db')
+	db = SqliteDatabase('../DEBUG_seq_data.db')
 else:
-	db = SqliteDatabase("seq_data.db").connect()
+	db = SqliteDatabase("../seq_data.db").connect()
 
 db.connect()
 
@@ -126,10 +145,6 @@ def save_md5(files = [], Entity = ""):
 #=================#
 # Process Fastq's #
 #=================#
-
-args = sys.argv[1:] # Used to specify a strain name for fq's that will be aligned.
-
-strain = args[0]
 
 fq_set = glob.glob("*-%s-*fq.gz" % strain)
 
@@ -212,7 +227,7 @@ if process_steps["align"] == True:
 		dup_report = [x.split("\t") for x in f.split("\n")[0:2]]
 		dup_report = zip([x.title() for x in dup_report[0]], dup_report[1])
 		for record in dup_report:
-			save_eav(bam_name + ".bam", record[0], record[1], Entity_Group = "Duplication Statistics", Tool="PICARD")
+			save_eav(strain, record[0], record[1], Entity_Group = "Duplication Statistics", Sub_Entity = bam_name + ".bam",  Tool="PICARD")
 
 		# Index Bam
 		os.system("samtools index %s.bam" % bam_name)
@@ -220,15 +235,15 @@ if process_steps["align"] == True:
 		# Store Bam Statistics
 		samtools_stats = subprocess.check_output("samtools stats %s.bam | grep '^SN'" % bam_name , shell=True )
 		for line in [x.split('\t')[1:3] for x in samtools_stats.split("\n")[:-1]]:
-			save_eav(bam_name + ".bam", line[0].replace(":","").title(), line[1],Entity_Group = "BAM Statistics", Tool = "Samtools Stats")
+			save_eav(strain, line[0].replace(":","").title(), line[1],Entity_Group = "BAM Statistics", Sub_Entity = bam_name + ".bam", Tool = "Samtools Stats")
 
 		# Generate Bam Depth and Coverage Statistics and save to database.
 		for i in coverage(bam_name + ".bam"):
-			save_eav(bam_name + ".bam", i[1], i[2], Sub_Entity=i[0], Entity_Group = "Bam Statistics", Tool = "Samtools Depth + Python")
+			save_eav(strain, i[1], i[2], Sub_Attribute=i[0], Entity_Group = "Bam Statistics", Sub_Entity = sample + ".bam", Tool = "Samtools Depth + Python")
 		
 		# Generate md5 of bam and store
 		print bam_name
-		save_md5([bam_name + ".bam"])
+		save_md5([bam_name + ".bam"], Entity = strain)
 
 		# Remove temporary files
 		os.remove("%s.tmp.sorted.bam" % bam_name)
@@ -239,7 +254,10 @@ if process_steps["align"] == True:
 
 	# Merge BAMs into a single BAM.
 	if len(bam_set) > 1:
-		os.system("samtools merge -f -@ 4 %s.bam %s " % (sample, ' '.join(bam_set)))
+		os.system("samtools merge -f -@ 4 %s.bam %s " % (strain, ' '.join(bam_set)))
+		# Create record indicating the bams that were merged.
+		save_eav(strain, sample + ".bam", ', '.join(bam_set), Sub_Entity = "Constitutive Bams", Entity_Group = "Bam Merged Statistics")
+		save_eav(strain, sample + ".bam", len(bam_set), Sub_Entity = "Constitutive Bam Count", Entity_Group = "Bam Merged Statistics")
 	else:
 		os.system("mv %s %s.bam" % (bam_set[0] ,sample))
 	os.system("samtools index %s.bam" % sample)
@@ -247,7 +265,7 @@ if process_steps["align"] == True:
 # Generate Depth and coverage statistics of the merged bam
 if process_steps["bam_stats"] == True:
 	for i in coverage(sample + ".bam", "chrM"):
-		save_eav(sample + ".bam", i[1], i[2], Sub_Entity=i[0], Entity_Group = "Bam Merged Statistics", Tool = "Samtools Depth + Python")
+		save_eav(strain, i[1], i[2], Sub_Entity = sample + ".bam", Sub_Attribute=i[0], Entity_Group = "Bam Merged Statistics", Tool = "Samtools Depth + Python")
 		
 	# Store Bam Statistics
 	samtools_stats = subprocess.check_output( "samtools stats %s.bam | grep '^SN'" % sample , shell=True )
@@ -255,14 +273,14 @@ if process_steps["bam_stats"] == True:
 	for line in [x.split('\t')[1:3] for x in samtools_stats.split("\n")[:-1]]:
 		attribute = line[0].replace(":","").title()
 		line_dict[attribute] = line[1] 
-		save_eav(sample + ".bam", attribute, line[1], Entity_Group = "BAM Merged Statistics", Tool = "Samtools")
+		save_eav(strain, attribute, line[1], Entity_Group = "BAM Merged Statistics", Sub_Entity = sample + ".bam", Tool = "Samtools")
 
 	# Also Calculate Coverage as (# Reads * Avg. Read Length / Lenght Genome)
 	calc_coverage = float(line_dict["Reads Mapped"]) * float(line_dict["Average Length"]) / genome_length
-	save_eav(sample + ".bam", "Coverage (Calculated)", calc_coverage, Entity_Group = "BAM Merged Statistics", Sub_Attribute = "(Reads Mapped * Avg. Read Length / Genome Length)", Tool = "Samtools")
+	save_eav(strain, "Depth of Coverage", calc_coverage, Entity_Group = "BAM Merged Statistics", Sub_Entity = sample + ".bam", Sub_Attribute = "(Reads Mapped * Avg. Read Length / Genome Length)", Tool = "Samtools")
 
 
-# Index Merged Bam File, and remove intermediates.
+# Remove intermediates.
 for b in bam_set:
 	try:
 		os.remove(b)
@@ -271,36 +289,32 @@ for b in bam_set:
 
 
 # Finally - Generate and Save an md5 sum.
-save_md5([sample + ".bam"])
+save_md5([sample + ".bam"], Entity = strain)
 
-
-
-
-
-###### SPLIT POINT ########
-
-
-
+# Move bam to bam folder.
+os.system("mv %s.bam ../bam/%s.bam" % (strain, sample))
+os.system("mv %s.bam.bai ../bam/%s.bam.bai" % (strain, sample))
+os.chdir("../bam/") # Change Dirs into bam directory.
 #====================#
 # Variant Calling    #
 #====================#
 
 # Generate and store bcf stats
-def gen_bcf_stats(bcf, sample, description, Sub_Attribute):
+def gen_bcf_stats(strain, bcf, description, Sub_Attribute):
 	# Generate stats - Following Het Polarization, Overwrites previous stat file.
 	tmp =  tempfile.NamedTemporaryFile().name
 	os.system("bcftools stats --samples - %s > %s" % (bcf, tmp))
 
 	# Get variant statistics.
 	for i in import_stats("%s" % (tmp)):
-		save_eav("%s.%s.bcf" % (sample, description), i[0], i[1], Entity_Group = "BCF Statistics", Sub_Attribute = Sub_Attribute, Tool="bcftools")
+		save_eav(strain, i[0], i[1], Entity_Group = "BCF Statistics", Sub_Entity = "%s.%s.bcf" % (strain, description), Sub_Attribute = Sub_Attribute, Tool="bcftools")
 
 
 # Fetch contigs
 contigs = {x.split("\t")[0]:int(x.split("\t")[1]) for x in file("../reference/%s/%s.fa.fai" % (reference, reference), 'r').read().split("\n")[:-1]}
 
 if process_steps["call_variants"] == True:
-	command = "parallel 'samtools mpileup -t DP,DV,DP4,SP -g -D -f ../reference/%s/%s.fa -r {} %s.bam | bcftools call --format-fields GQ,GP -c -v > raw.%s.{}.bcf' ::: %s" % (reference, reference, sample, sample, ' '.join(contigs.keys()))
+	command = "parallel 'samtools mpileup -t DP,DV,DP4,SP -g -f ../reference/%s/%s.fa -r {} %s.bam | bcftools call --format-fields GQ,GP -c -v > raw.%s.{}.bcf' ::: %s" % (reference, reference, strain, strain, ' '.join(contigs.keys()))
 	os.system(command)
 	os.system("echo %s | bcftools concat -O b `ls -v raw.%s.*.bcf` > %s.no_filter.bcf" % (contigs.keys(), sample , sample.replace(".txt","")))
 	
@@ -311,8 +325,10 @@ if process_steps["call_variants"] == True:
 	os.system("rm -f raw.%s.*" % sample)
 
 
-gen_bcf_stats("%s.no_filter.bcf" %  sample, sample, "No Filter", "No Filter")
+gen_bcf_stats(strain, "%s.no_filter.bcf" %  strain, "No Filter", "No Filter")
 
+
+###### SPLIT POINT ########
 
 #======================#
 # Variant Filtering    #
@@ -324,19 +340,19 @@ Entity_Group = "BCF Variant Filtering"
 # LCR Filtering
 #
 # Reheader, and add LCR Region Filter
-command = "bcftools view %s.no_filter.bcf | awk 'NR == 2{ print \"##FILTER=<ID=LCR_Region,Description=\"Low Complexity Region\">\"} { print }' | bcftools annotate -O b -a ../LCR_Region/%s -c \"CHROM,FROM,TO,FILTER\" > %s.LCR.bcf" % (sample, LCR_File, sample)
+command = "bcftools view %s.no_filter.bcf | awk 'NR == 2{ print \"##FILTER=<ID=LCR_Region,Description=\"Low Complexity Region\">\"} { print }' | bcftools annotate -O b -a ../LCR_Region/%s -c \"CHROM,FROM,TO,FILTER\" > %s.LCR.bcf" % (strain, LCR_File, sample)
 os.system(command)
 
 #
 # Heterozygote Polarization
 #
 
-os.system("bcftools view {input_file}.LCR.bcf | python het_polarization.py | bcftools view -O b > {output_file}.het_polarization.bcf".format(input_file = sample , output_file = sample))
+os.system("bcftools view {input_file}.LCR.bcf | python {scripts_dir}het_polarization.py | bcftools view -O b > {output_file}.het_polarization.bcf".format(input_file = sample , output_file = sample, scripts_dir = scripts_dir))
 
 # Pull in short log (summarizes het polarization stats, and save)
 shortlog = "het_polarization_log.shortlog.%s.txt" % sample
 for i in [x.split(":") for x in file(shortlog, 'r').read().split(",")]:
-	save_eav(sample, i[0],  i[1], Entity_Group = Entity_Group, Sub_Entity = "Heterozygous Polarization",  Tool="Python Script")
+	save_eav(strain, i[0],  i[1], Entity_Group = Entity_Group, Sub_Entity = "Heterozygous Polarization",  Tool="Python Script")
 
 # Remove the shortlog
 os.remove(shortlog)
@@ -344,31 +360,21 @@ os.remove(shortlog)
 # Get Average Depth
 average_depth = float(subprocess.check_output("bcftools query -f '%%DP\\n' %s | awk '{ total += $1; count++ } END { avg=(total/count);  print (avg) }'" % (sample + ".het_polarization.bcf"), shell=True).strip())
 depth_threshold = float(average_depth + 3*math.sqrt(average_depth))
-save_eav(sample, "Average Variant Depth", average_depth, Entity_Group = Entity_Group, Tool="Awk")
-save_eav(sample, "Depth Threshold", depth_threshold, Entity_Group = Entity_Group, Tool = "Python + Awk")
+save_eav(strain, "Average Variant Depth", average_depth, Entity_Group = Entity_Group, Tool="Awk")
+save_eav(strain, "Depth Threshold", depth_threshold, Entity_Group = Entity_Group, Tool = "Python + Awk")
 
 depth_threshold = 1
 #
 # Filter Depth
 #
 
-os.system("bcftools filter -O b --mode +x  -s 'FailDepth' --exclude 'DP>{depth_threshold}' {input_file}.het_polarization.bcf > {output_file}.dp.bcf".format(input_file = sample , output_file = sample, depth_threshold = depth_threshold))
+os.system("bcftools filter -O b --mode +x  -s 'FailDepth' --exclude 'DP>{depth_threshold}' {input_file}.het_polarization.bcf > {output_file}.dp.bcf".format(input_file = sample , output_file = strain, depth_threshold = depth_threshold))
 
 #
 # Filter Quality
 #
 
-os.system("bcftools filter -O b --mode +x -s 'Fail Quality' --exclude '%QUAL<{qual_threshold}' {input_file}.dp.bcf > {output_file}.qual.bcf".format(input_file = sample , output_file = sample, qual_threshold = 30))
+os.system("bcftools filter -O b --mode +x -s 'Fail Quality' --exclude '%QUAL<{qual_threshold}' {input_file}.dp.bcf > {output_file}.qual.bcf".format(input_file = sample , output_file = strain, qual_threshold = 30))
 
-
-
-gen_bcf_stats("%s.qual.bcf" % sample, sample, "Quality Filter", "Quality")
-
-
-#"bcftools view %s %s %s > %s " % (lcr_filter, vcf, filter_set, vcf_filename)
-#bcftools filter -O b --include '%%QUAL>%s' 
-#=====================#
-# Apply Prediction    #
-#=====================#
-
+gen_bcf_stats(strain, "%s.qual.bcf" % strain, "Quality Filter", "Quality")
 

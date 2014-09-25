@@ -5,54 +5,56 @@ bcftools view <filename> | python het_polarization.py  | bcftools view -O b > <f
 '''
  
 import sys
- 
-log = open("het_polarization_log.txt",'w')
- 
-PL_diff = 20
- 
+
 het_prior = 0.000001
  
 def phred2p(phred):
     return 10**(phred/-10.0)
  
 def main():
+    polarize_alt = 0
+    polarize_ref = 0
+    remain_het = 0
+    info_added = False
     for l in sys.stdin.xreadlines():
-        het_set = []
         if l.startswith("#CHROM"):
             # Get Sample information and count
             samples = l.replace("\n","").split("\t")[9:]
-            log = open("het_polarization_log.%s.txt" % '.'.join(samples),'w')
-            log.write("CHROM\tPOS\t" + '\t'.join(samples) + "\n")
+            shortlog = open("het_polarization_log.shortlog.%s.txt" % '.'.join(samples),'w')
             sys.stdout.write(l)
         elif l.startswith("#"):
+            # Add Info line for het polarization flag
+            if l.startswith("##INFO") and info_added == False:
+                info_added = True
+                sys.stdout.write("##INFO=<ID=HetPol,Type=String,Description=\"Flag used to mark whether a variant was polarized\">\n")
             # Pass comment lines.
             sys.stdout.write(l)
-        elif l.find("0/1") != -1:
+        # Ignore indels, and see if there are any hets in the line before proceeding.
+        elif l.find("0/1") != -1 and l.find("INDEL") == -1:
         # Check and see if there are any hets
             l = l.split("\t")
-            het_set = [l[0],l[1]]
             PL = l[8].split(":").index("PL")
             for k,v in enumerate(l[9:]):
+                # Exclude any line 
                 if v.startswith("0/1"):
                     PL_set = [phred2p(int(i)) for i in v.split(":")[PL].split(",")]
                     cond_prob = [PL_set[0]*((1-het_prior)/2), PL_set[1]*het_prior, PL_set[2]*(1-het_prior)/2]
                     cond_prob = [cond_prob[0]/sum(cond_prob), cond_prob[1]/sum(cond_prob), cond_prob[2]/sum(cond_prob)]
                     if (max(cond_prob) == cond_prob[0]):
                         l[k+9] = v.replace("0/1","0/0")
-                        het_set.append("AA - %s" % cond_prob[0])
+                        l[7] = l[7] + ";HetPol=AA"
+                        polarize_ref += 1
                     elif (max(cond_prob) == cond_prob[2]):
                         l[k+9] = v.replace("0/1","1/1")
-                        het_set.append("BB - %s" % cond_prob[2])
+                        l[7] = l[7] + ";HetPol=BB"
+                        polarize_alt += 1
                     else:
-                        het_set.append("AB - %s" % cond_prob[1])
-                else:
-                    het_set.append(0)
+                        remain_het += 1
             sys.stdout.write("\t".join(l))
-            log.write("\t".join(map(str,het_set)) + "\n")
         else:
-            het_set.append(l[0:l.index("\t",l.index("\t")+1)] + '\t'.join((1+len(samples))*['0']))
             sys.stdout.write(l)
- 
+    shortlog.write("Het Call Polarized to Alt:%s,Het Call Polarized to Ref:%s,Het Call No Change:%s" % (polarize_alt, polarize_ref, remain_het))
+
 if __name__ == '__main__':
     main()
 
