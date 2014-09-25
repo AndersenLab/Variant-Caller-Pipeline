@@ -50,12 +50,15 @@ from peewee import *
 # Determine system type:
 system_type =  os.uname()[0]
 
+# If local cd into appropriate directory
+if system_type == "Darwin":
+	os.chdir("../../data/fq")
+
 # Setup Scripts Dir
 scripts_dir = "../../scripts/pipeline/"
 
 # Get Arguments
-args = sys.argv[1:] # Used to specify a strain name for fq's that will be aligned.
-
+strain = sys.argv[1]
 
 process_steps = {
 		"debug_sqlite" : True,    # Uses an alternative database.
@@ -135,6 +138,8 @@ def save_md5(files = [], Entity = ""):
 #=================#
 
 fq_set = glob.glob("*-%s-*fq.gz" % strain)
+
+print fq_set
 
 # Do we have fqs
 if (len(fq_set) == 0):
