@@ -36,10 +36,32 @@
 import os, glob, sys, subprocess, re, gzip, math, tempfile
 
 sys.path.append("/lscr2/andersenlab/dec211/scripts/pipeline/")
+#sys.path.append("/exports/people/andersenlab/dec211/python_modules/peewee/")
+#sys.path.remove("/usr/local/lib/python2.6/dist-packages/peewee-2.3.2-py2.6.egg")
+
+print sys.path
 
 from seq_utility_functions import *
 from datetime import datetime
 from peewee import *
+
+
+## Fix for python 2.6
+
+if "check_output" not in dir( subprocess ): # duck punch it in!
+    def f(*popenargs, **kwargs):
+        if 'stdout' in kwargs:
+            raise ValueError('stdout argument not allowed, it will be overridden.')
+        process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
+        output, unused_err = process.communicate()
+        retcode = process.poll()
+        if retcode:
+            cmd = kwargs.get("args")
+            if cmd is None:
+                cmd = popenargs[0]
+            raise subprocess.CalledProcessError(retcode, cmd)
+        return output
+    subprocess.check_output = f
 
 #=======#
 # Setup #
@@ -51,6 +73,9 @@ system_type =  os.uname()[0]
 # If local cd into appropriate directory
 if system_type == "Darwin":
 	os.chdir("../../data/fq")
+	db_loc = "../"
+else:
+	db_loc = "/exports/people/andersenlab/dec211/"
 
 # Setup Scripts Dir
 scripts_dir = "../../scripts/pipeline/"
@@ -59,7 +84,7 @@ scripts_dir = "../../scripts/pipeline/"
 strain = sys.argv[1]
 
 process_steps = {
-		"debug_sqlite" : True,    # Uses an alternative database.
+		"debug_sqlite" : False,    # Uses an alternative database.
 		"md5" : True,            # Runs an MD5 hash on every file and saves to database
 		"fastq_stats" : True,     # Produce fastq stats on number of reads, unique reads, etc.
 		"align" : True,
@@ -86,9 +111,9 @@ genome_length = int(file("../reference/%s/%s.fa.amb" % (reference, reference), '
 
 # Drop tables if specified.
 if process_steps["debug_sqlite"] == True:
-	db = SqliteDatabase('../DEBUG_seq_data.db')
+	db = SqliteDatabase(db_loc + "DEBUG_seq_data.db")
 else:
-	db = SqliteDatabase("../seq_data.db").connect()
+	db = SqliteDatabase(db_loc + "seq_data.db")
 
 db.connect()
 
@@ -203,6 +228,7 @@ if process_steps["align"] == True:
 		os.system("bwa mem -M -t %s -R \"%s\" %s %s %s | samtools view -b -S -h -@ 2 -  > %s.tmp.bam" % (system_cores[system_type], readEntity_Group, reference_loc, fastq_set[0], fastq_set[1],bam_name))
 		os.system("samtools sort -O bam -T sorting -@ %s %s.tmp.bam > %s.tmp.sorted.bam" % (system_cores[system_type], bam_name, bam_name))
 
+		os.system("echo $PATH")
 		## Mark Duplicates, and remove.
 		remove_duplicates = """
 		mark_dups=`which MarkDuplicates.jar`
