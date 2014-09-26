@@ -9,7 +9,10 @@ from itertools import groupby as g
 
 
 def most_common(L):
-  return max(g(sorted(L)), key=lambda(x, v):(len(list(v)),-L.index(x)))[0]
+  try:
+  	return max(g(sorted(L)), key=lambda(x, v):(len(list(v)),-L.index(x)))[0]
+  except:
+  	return ""
 
 
 def extract_fastq_info(fastq):
@@ -87,14 +90,15 @@ def coverage(bam, mtchr = None):
 		raise Exception("Bam file does not exist")
 	header = subprocess.check_output("samtools view -H %s" % bam, shell = True)
 	# Extract contigs from header and convert contigs to integers
-	contigs = re.findall("@SQ	SN:(?P<chrom>[A-Za-z0-9]+)\WLN:(?P<length>[0-9]+)", header)
-	contigs = {x[0]:int(x[1]) for x in contigs}
-	print contigs
-	# Calculate Coverage for each chromosome individually
+	contigs = {}
+	for x in re.findall("@SQ	SN:(?P<chrom>[A-Za-z0-9]+)\WLN:(?P<length>[0-9]+)", header):
+		contigs[x[0]] = int(x[1])
+		# Calculate Coverage for each chromosome individually
 	coverage_dict = {}
 	for c in contigs.keys():
 		command = "samtools depth -r %s %s | awk '{sum+=$3;cnt++}END{print cnt \"\t\" sum}'" % (c, bam)
 		coverage_dict[c] = {}
+		print subprocess.check_output(command, shell = True).strip().split("\t")
 		coverage_dict[c]["Bases Mapped"], coverage_dict[c]["Sum of Depths"] = map(int,subprocess.check_output(command, shell = True).strip().split("\t"))
 		coverage_dict[c]["Breadth of Coverage"] = coverage_dict[c]["Bases Mapped"] / float(contigs[c])
 		coverage_dict[c]["Depth of Coverage"] = coverage_dict[c]["Sum of Depths"] / float(contigs[c])

@@ -1,4 +1,4 @@
-#!/bin/python 
+#!/usr/bin/python
 
 #=============#
 # Description #
@@ -10,7 +10,7 @@
 # * Sorts
 # * Indexes
 
-#SBATCH --job-name=bwa
+#SBATCH --job-name=indseq
 
 #SBATCH --output=../log/%j.txt
 #SBATCH --error=../log/%j.out
@@ -33,12 +33,10 @@
 #=================#
 
 # First - check whether the files in question exist.
-import os, glob, sys, subprocess
-import sys
-import re
-import gzip
-import math
-import tempfile
+import os, glob, sys, subprocess, re, gzip, math, tempfile
+
+sys.path.append("/lscr2/andersenlab/dec211/scripts/pipeline/")
+
 from seq_utility_functions import *
 from datetime import datetime
 from peewee import *
@@ -113,7 +111,7 @@ class EAV(Model):
 
 # Drop tables if specified.
 if process_steps["debug_sqlite"] == True:
-	db.drop_tables([EAV], safe=True)
+	#db.drop_tables([EAV], safe=True)
 	db.create_tables([EAV], safe=True)
 else:
 	db.create_tables([EAV], safe=True)
@@ -277,6 +275,7 @@ if process_steps["bam_stats"] == True:
 for b in bam_set:
 	try:
 		os.remove(b)
+		os.remove(b + ".bai")
 	except:
 		pass
 
@@ -305,7 +304,9 @@ def gen_bcf_stats(strain, bcf, description, Sub_Attribute):
 
 
 # Fetch contigs
-contigs = {x.split("\t")[0]:int(x.split("\t")[1]) for x in file("../reference/%s/%s.fa.fai" % (reference, reference), 'r').read().split("\n")[:-1]}
+contigs = {}
+for x in file("../reference/%s/%s.fa.fai" % (reference, reference), 'r').read().split("\n")[:-1]:
+	contigs[x.split("\t")[0]] = int(x.split("\t")[1])
 
 if process_steps["call_variants"] == True:
 	command = "parallel 'samtools mpileup -t DP,DV,DP4,SP -g -f ../reference/%s/%s.fa -r {} %s.bam | bcftools call --format-fields GQ,GP -c -v > raw.%s.{}.bcf' ::: %s" % (reference, reference, strain, strain, ' '.join(contigs.keys()))
