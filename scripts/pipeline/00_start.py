@@ -228,7 +228,6 @@ if process_steps["align"] == True:
 		os.system("bwa mem -M -t %s -R \"%s\" %s %s %s | samtools view -b -S -h -@ 2 -  > %s.tmp.bam" % (system_cores[system_type], readEntity_Group, reference_loc, fastq_set[0], fastq_set[1],bam_name))
 		os.system("samtools sort -O bam -T sorting -@ %s %s.tmp.bam > %s.tmp.sorted.bam" % (system_cores[system_type], bam_name, bam_name))
 
-		os.system("echo $PATH")
 		## Mark Duplicates, and remove.
 		remove_duplicates = """
 		mark_dups=`which MarkDuplicates.jar`
@@ -335,7 +334,8 @@ for x in file("../reference/%s/%s.fa.fai" % (reference, reference), 'r').read().
 	contigs[x.split("\t")[0]] = int(x.split("\t")[1])
 
 if process_steps["call_variants"] == True:
-	command = "parallel 'samtools mpileup -t DP,DV,DP4,SP -g -f ../reference/%s/%s.fa -r {} %s.bam | bcftools call --format-fields GQ,GP -c -v > raw.%s.{}.bcf' ::: %s" % (reference, reference, strain, strain, ' '.join(contigs.keys()))
+	command = "parallel --gnu 'samtools mpileup -t DP,DV,DP4,SP -g -f ../reference/%s/%s.fa -r {} %s.bam | bcftools call --format-fields GQ,GP -c -v > raw.%s.{}.bcf' ::: %s" % (reference, reference, strain, strain, ' '.join(contigs.keys()))
+	print command
 	os.system(command)
 	os.system("echo %s | bcftools concat -O b `ls -v raw.%s.*.bcf` > %s.single.bcf" % (contigs.keys(), sample , sample.replace(".txt","")))
 	
