@@ -190,7 +190,8 @@ if process_steps["align"] == True:
 
 		# Generate Bam Depth and Coverage Statistics and save to database.
 		for i in coverage(bam_name + ".bam"):
-			save_eav(strain, i[1], i[2], Sub_Attribute=i[0], Entity_Group = "Bam Statistics", Sub_Entity = bam_name + ".bam", Tool = "Samtools Depth + Python")
+			print i, "ind"
+			save_eav(strain, i[1], i[2], Sub_Attribute=i[0], Entity_Group = "BAM Statistics", Sub_Entity = bam_name + ".bam", Tool = "Samtools Depth + Python")
 		
 		# Generate md5 of bam and store
 		print bam_name
@@ -216,6 +217,7 @@ if process_steps["align"] == True:
 # Generate Depth and coverage statistics of the merged bam
 if process_steps["bam_stats"] == True:
 	for i in coverage(sample + ".bam", "chrM"):
+		print i, "Merged"
 		save_eav(strain, i[1], i[2], Sub_Entity = sample + ".bam", Sub_Attribute=i[0], Entity_Group = "Bam Merged Statistics", Tool = "Samtools Depth + Python")
 		
 	# Store Bam Statistics
@@ -269,19 +271,15 @@ for x in file("../reference/%s/%s.fa.fai" % (reference, reference), 'r').read().
 	contigs[x.split("\t")[0]] = int(x.split("\t")[1])
 
 if process_steps["call_variants"] == True:
-	command = "parallel --gnu 'samtools mpileup -t DP,DV,DP4,SP -g -f ../reference/%s/%s.fa -r {} %s.bam | bcftools call --format-fields GQ,GP -c -v > raw.%s.{}.bcf' ::: %s" % (reference, reference, strain, strain, ' '.join(contigs.keys()))
-	print command
+	command = "parallel --gnu 'samtools mpileup -t DP,DV,DP4,SP -g -f ../reference/%s/%s.fa -r {} %s.bam | bcftools call --format-fields GQ,GP -c -v > ../individual_bcf/raw.%s.{}.bcf' ::: %s" % (reference, reference, strain, strain, ' '.join(contigs.keys()))
 	os.system(command)
-	os.system("echo %s | bcftools concat -O b `ls -v raw.%s.*.bcf` > %s.single.bcf" % (contigs.keys(), sample , sample.replace(".txt","")))
+	os.system("echo %s | bcftools concat -O b `ls -v ../individual_bcf/raw.%s.*.bcf` > ../individual_bcf/%s.single.bcf" % (contigs.keys(), sample , sample.replace(".txt","")))
 	
 	# Index
-	os.system("bcftools index -f %s.single.bcf" % sample)
+	os.system("bcftools index -f ../individual_bcf/%s.single.bcf" % sample)
 
 	# Remove temporary files
-	os.system("rm -f raw.%s.*" % sample)
+	os.system("rm -f ../individual_bcf/raw.%s.*" % sample)
 
 
-gen_bcf_stats(strain, "%s.single.bcf" %  strain, "Single", "No Filter")
-
-os.system("mv %s.single.bcf ../individual_bcf/%s.single.bcf" % (strain, strain))
-os.system("bcftools index ../individual_bcf/%s.single.bcf" % (strain))
+gen_bcf_stats(strain, "../individual_bcf/%s.single.bcf" %  strain, "Single", "No Filter")
