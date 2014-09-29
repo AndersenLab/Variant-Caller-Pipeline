@@ -42,26 +42,10 @@ sys.path.append("/lscr2/andersenlab/dec211/scripts/pipeline/")
 print sys.path
 
 from seq_utility_functions import *
+from conn import *
 from datetime import datetime
 from peewee import *
 
-
-## Fix for python 2.6
-
-if "check_output" not in dir( subprocess ): # duck punch it in!
-    def f(*popenargs, **kwargs):
-        if 'stdout' in kwargs:
-            raise ValueError('stdout argument not allowed, it will be overridden.')
-        process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
-        output, unused_err = process.communicate()
-        retcode = process.poll()
-        if retcode:
-            cmd = kwargs.get("args")
-            if cmd is None:
-                cmd = popenargs[0]
-            raise subprocess.CalledProcessError(retcode, cmd)
-        return output
-    subprocess.check_output = f
 
 #=======#
 # Setup #
@@ -97,6 +81,8 @@ process_steps = {
 # Options #
 #=========#
 
+# Determine system type:
+system_type =  os.uname()[0]
 reference = "ce10"
 md5_system = {"Linux" : "md5sum", "Darwin":"md5"} # Needed to make md5 work locally and on cluster.
 system_cores = {"Linux": 8, "Darwin": 4} # For use with BWA
@@ -104,57 +90,6 @@ system_cores = {"Linux": 8, "Darwin": 4} # For use with BWA
 ## LCR File
 LCR_File = "WS220.wormbase.masked.bed.gz"
 genome_length = int(file("../reference/%s/%s.fa.amb" % (reference, reference), 'r').read().strip().split(" ")[0])
-
-#==========#
-# Database #
-#==========#
-
-# Drop tables if specified.
-if process_steps["debug_sqlite"] == True:
-	db = SqliteDatabase(db_loc + "DEBUG_seq_data.db")
-else:
-	db = SqliteDatabase(db_loc + "seq_data.db")
-
-db.connect()
-
-class EAV(Model):
-    Entity_Group = CharField(index=True, null = True)
-    Entity = CharField(index=True)
-    Sub_Entity = CharField(index=True, null = True) # Used for option secondary super Entity_Groupings
-    Attribute = CharField(index=True)
-    Sub_Attribute = CharField(index=True, null = True) # Used for optional secondary sub Entity_Groupings
-    Value = CharField(index=True)
-    Tool = CharField(index=True, null=True)
-    DateTime = DateTimeField()
-
-    class Meta:
-        database = db # This model uses the "seq_data.db" database.
-        indexes = (
-            # Specify a unique multi-column index on from/to-user.
-            (('Entity', 'Attribute', 'Value',), True),
-        )
-
-# Drop tables if specified.
-if process_steps["debug_sqlite"] == True:
-	#db.drop_tables([EAV], safe=True)
-	db.create_tables([EAV], safe=True)
-else:
-	db.create_tables([EAV], safe=True)
-
-
-def save_eav(Entity, Attribute, Value, Entity_Group=None, Sub_Entity=None, Sub_Attribute=None, Tool=None):
-	record = EAV(Entity=Entity, Attribute=Attribute, Value=Value, Entity_Group=Entity_Group, Sub_Entity=Sub_Entity, Sub_Attribute=Sub_Attribute, Tool=Tool, DateTime=datetime.now())
-	try:
-		record.save()
-	except:
-		record.update()
-
-def save_md5(files = [], Entity = ""):
-	md5 = subprocess.check_output("parallel %s ::: %s" % (md5_system[system_type], ' '.join(files)), shell=True)
-	m = re.findall('MD5 \((.*)\) = (.*)', md5)
-	for i in m:
-		# Check File Hashes
-		save_eav(Entity, "File Hash", i[1], Entity_Group = "MD5 Hash", Sub_Entity= i[0], Tool = "MD5")
 
 #=================#
 # Process Fastq's #
@@ -255,7 +190,7 @@ if process_steps["align"] == True:
 
 		# Generate Bam Depth and Coverage Statistics and save to database.
 		for i in coverage(bam_name + ".bam"):
-			save_eav(strain, i[1], i[2], Sub_Attribute=i[0], Entity_Group = "Bam Statistics", Sub_Entity = sample + ".bam", Tool = "Samtools Depth + Python")
+			save_eav(strain, i[1], i[2], Sub_Attribute=i[0], Entity_Group = "Bam Statistics", Sub_Entity = bam_name + ".bam", Tool = "Samtools Depth + Python")
 		
 		# Generate md5 of bam and store
 		print bam_name
@@ -314,7 +249,7 @@ os.system("mv %s.bam.bai ../bam/%s.bam.bai" % (strain, sample))
 os.chdir("../bam/") # Change Dirs into bam directory.
 
 #====================#
-# Variant Calling    #
+# Variant Calling    # - For initial calling
 #====================#
 
 # Generate and store bcf stats

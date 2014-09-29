@@ -133,11 +133,3 @@ def coverage(bam, mtchr = None):
 			coverage += [(k,x[0], x[1])]
 	return coverage
 
-
-
-def save_md5(files = [], type = ""):
-	md5 = subprocess.check_output("parallel %s ::: %s" % (md5_system[system_type], ' '.join(files)), shell=True)
-	m = re.findall('MD5 \((.*)\) = (.*)', md5)
-	for i in m:
-		# Check File Hashes
-		store_eav("MD5 Hash", i[0], "File Hash", i[1], Tool="MD5")
