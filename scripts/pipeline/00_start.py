@@ -207,11 +207,11 @@ if process_steps["align"] == True:
 	# Merge BAMs into a single BAM.
 	if len(bam_set) > 1:
 		os.system("samtools merge -f -@ 4 %s.bam %s " % (strain, ' '.join(bam_set)))
-		# Create record indicating the bams that were merged.
-		save_eav(strain, sample + ".bam", ', '.join(bam_set), Sub_Entity = "Constitutive Bams", Entity_Group = "Bam Merged Statistics")
-		save_eav(strain, sample + ".bam", len(bam_set), Sub_Entity = "Constitutive Bam Count", Entity_Group = "Bam Merged Statistics")
 	else:
-		os.system("mv %s %s.bam" % (bam_set[0] ,sample))
+		os.system("mv %s %s.bam" % (bam_set[0] , strain))
+	# Create record indicating the bams that were merged.
+	save_eav(strain, sample + ".bam", ', '.join(bam_set), Sub_Entity = "Constitutive Bams", Entity_Group = "Bam Merged Statistics")
+	save_eav(strain, sample + ".bam", len(bam_set), Sub_Entity = "Constitutive Bam Count", Entity_Group = "Bam Merged Statistics")
 	os.system("samtools index %s.bam" % sample)
 
 # Generate Depth and coverage statistics of the merged bam
@@ -236,8 +236,9 @@ if process_steps["bam_stats"] == True:
 # Remove intermediates.
 for b in bam_set:
 	try:
-		os.remove(b)
-		os.remove(b + ".bai")
+		pass
+		#os.remove(b)
+		#os.remove(b + ".bai")
 	except:
 		pass
 

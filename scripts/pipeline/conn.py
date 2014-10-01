@@ -53,7 +53,7 @@ class EAV(Model):
         database = db # This model uses the "seq_data.db" database.
         indexes = (
             # Specify a unique multi-column index on from/to-user.
-            (('Entity', 'Attribute', 'Value',), True),
+            (('Entity_Group','Entity', 'Sub_Entity', 'Attribute', 'Sub_Attribute', 'Value',), True),
         )
 
 db.create_tables([EAV], safe=True)

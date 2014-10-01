@@ -38,5 +38,5 @@ files = glob.glob("*.bcf")
 save_eav("Individual BCF Merging", "Member bcfs", files, Entity_Group = "BCF Statistics", Tool="bcftools")
 save_eav("Individual BCF Merging", "Member bcfs count", len(files), Entity_Group = "BCF Statistics", Tool="bcftools")
 
-os.system("bcftools merge -O b `ls *.single.bcf` > complete_variant_set.bcf")
-os.system("bcftools index complete_variant_set.bcf")
+os.system("bcftools merge -O z `ls *.single.bcf` > complete_variant_set.vcf.gz")
+os.system("bcftools index -f complete_variant_set.bcf")

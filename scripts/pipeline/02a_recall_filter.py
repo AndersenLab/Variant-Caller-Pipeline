@@ -57,6 +57,7 @@ scripts_dir = "../../scripts/pipeline/"
 
 # Get Arguments
 strain = sys.argv[1]
+print strain
 
 #=========#
 # Options #
@@ -68,9 +69,6 @@ reference = "ce10"
 md5_system = {"Linux" : "md5sum", "Darwin":"md5"} # Needed to make md5 work locally and on cluster.
 system_cores = {"Linux": 8, "Darwin": 4} # For use with BWA
 
-## LCR File
-LCR_File = "WS220.wormbase.masked.bed.gz"
-genome_length = int(file("../reference/%s/%s.fa.amb" % (reference, reference), 'r').read().strip().split(" ")[0])
 
 #========#
 # Recall # Incorporate full list of available variants 
@@ -93,19 +91,18 @@ for x in file("../reference/%s/%s.fa.fai" % (reference, reference), 'r').read().
 	contigs[x.split("\t")[0]] = int(x.split("\t")[1])
 
 
-command = "parallel --gnu 'samtools mpileup -t DP,DV,DP4,SP -g -f ../reference/%s/%s.fa -r {} %s.bam | bcftools call -R %s --format-fields GQ,GP -c -v > ../group_bcf/raw.%s.{}.group.bcf' ::: %s" % (reference, reference, strain, '../individual_bcf/complete_variant_set.bcf', strain, ' '.join(contigs.keys()))
-print command
+command = "parallel --verbose --gnu 'samtools mpileup -t DP,DV,DP4,SP -g -f ../reference/%s/%s.fa -r {} %s.bam | bcftools call -T %s -O b --format-fields GQ,GP -c -v > ../group_bcf/raw.%s.{}.group.bcf' ::: %s" % (reference, reference, strain, '../individual_bcf/complete_variant_set.vcf.gz', strain, ' '.join(contigs.keys()))
 os.system(command)
 os.system("echo %s | bcftools concat -O b `ls -v ../group_bcf/raw.%s.*.group.bcf` > ../group_bcf/%s.group.bcf" % (contigs.keys(), strain , strain.replace(".txt","")))
 
 # Index
-os.system("bcftools index -f ../group_bcf/%s.all.bcf" % strain)
+os.system("bcftools index -f ../group_bcf/%s.group.bcf" % strain)
 
 # Remove temporary files
-os.system("rm -f ../group_bcf/raw.%s.*" % strain)
+#os.system("rm -f ../group_bcf/raw.%s.*" % strain)
 
 
-gen_bcf_stats(strain, "../group_bcf/%s.all.bcf" %  strain, "Group", "No Filter")
+gen_bcf_stats(strain, "../group_bcf/%s.group.bcf" %  strain, "Group", "No Filter")
 
 #========#
 # Filter # Variants
