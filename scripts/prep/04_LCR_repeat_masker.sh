@@ -9,12 +9,12 @@
 
 ## LCR 2
 
-curl 'ftp://ftp.wormbase.org/pub/wormbase/releases/WS235/species/c_elegans/c_elegans.WS235.genomic_masked.fa.gz' > c_elegans.WS220.genomic_masked.fa.gz
-python ../../scripts/misc/generate_masked_ranges.py c_elegans.WS220.genomic_masked.fa.gz CHROMOSOME_ chr | sed 's/chrMtDNA/chrM/g' | awk '{ print $0 "\tLCR_Wormbase_235"}' >  WS220.wormbase.masked.bed
+curl 'ftp://ftp.wormbase.org/pub/wormbase/releases/WS235/species/c_elegans/c_elegans.WS235.genomic_masked.fa.gz' > c_elegans.WS235.genomic_masked.fa.gz
+python ../../scripts/misc/generate_masked_ranges.py c_elegans.WS235.genomic_masked.fa.gz | awk '{ print $0 "\tLCR_Wormbase_235"}' >  WS235.wormbase.masked.bed
 
 ## Generate Stats on repeat masking, and store in database.
 #bedtools genomecov -i ce10.ucsc.masked.bed -g ce10.genome > ce10.ucsc.masked.genomecov.statsitics.txt
-bedtools genomecov -i WS235.wormbase.masked.bed -g ce10.genome > WS235.wormbase.masked.genomecov.statistics.txt
+bedtools genomecov -i WS235.wormbase.masked.bed -g ws235.genome > WS235.wormbase.masked.genomecov.statistics.txt
 
 #bgzip -f ce10.ucsc.masked.bed
 bgzip -f WS235.wormbase.masked.bed
