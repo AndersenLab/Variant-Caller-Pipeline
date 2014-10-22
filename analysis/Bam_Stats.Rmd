@@ -1,0 +1,61 @@
+---
+title: "Bam Statistics"
+output: html_document
+---
+
+```{r, message=FALSE, warning=FALSE}
+library(dplyr)
+library(ggthemr)
+setwd("/Users/daniel/Documents/git/Variant-Caller-Pipeline/analysis/")
+db <- tbl(src_sqlite(path = "seq_data.db"), "eav")
+```
+
+
+### Depth and Breadth of Coverage
+
+```{r depth of coverage}
+
+depth_of_coverage <- collect(filter(db, Entity_Group == "Bam Merged Statistics",
+       Attribute == "Depth of Coverage", 
+       Sub_Attribute == "genome", 
+       Entity %not like% "%test%") %>%
+       arrange(Value)) %>%
+       mutate(Value = as.numeric(Value))
+
+
+median_depth_of_coverage <- median(depth_of_coverage$Value)
+
+# Get the median coverage level
+  
+ggthemr('fresh')
+
+# Depth of Coverage
+ggplot(depth_of_coverage) +
+  geom_line( aes(y=Value,x=reorder(Entity,Value), group=1)) +
+  scale_y_continuous(breaks=seq(0, 200, 10)) +
+  theme(legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1, size=8)) +
+  labs(x="Strain", y="Depth of Coverage", title="Depth of Coverage") +
+  theme(axis.text.x=element_text(angle=90)) +
+  geom_hline(yintercept=median_depth_of_coverage)
+
+
+```
+
+```{r breadth of coverage}
+
+breadth_of_coverage <- collect(filter(db, Entity_Group == "Bam Merged Statistics",
+       Attribute == "Breadth of Coverage", 
+       Sub_Attribute == "genome", 
+       Entity %not like% "%test%") %>%
+       arrange(Value)) %>%
+       mutate(Value = as.numeric(Value))
+
+
+ggplot(breadth_of_coverage) +
+  geom_line( aes(y=Value,x=reorder(Entity,Value), group=1)) +
+  theme(legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1, size=8)) +
+  labs(x="Strain", y="Breadth of Coverage", title="Breadth of Coverage") +
+  theme(axis.text.x=element_text(angle=90))
+
+
+```

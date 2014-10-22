@@ -5,27 +5,13 @@ output: html_document
 
 ```{r, message=FALSE, warning=FALSE}
 library(dplyr)
-setwd("/Users/dancook/Documents/Spring_Rotation/Variant-Caller-Pipeline/analysis/")
+setwd("/Users/daniel/Documents/git/Variant-Caller-Pipeline/analysis/")
 db <- tbl(src_sqlite(path = "seq_data.db"), "eav")
 ```
 
 ### Sum of Reads
 
 ```{r NumReads}
-n_Reads <- format(collect(filter(db, Attribute == "Number of Reads") %>% summarize(sum(Value))), big.mark=",",scientific=F)
+n_Reads <- format(sum(as.numeric(collect(filter(db, Attribute == "Number of Reads") %>% select(Value))$Value)), big.mark=",",scientific=F)
 sprintf("Number of Reads Sequenced: %s", n_Reads)
-```
-
-### Depth and Breadth of Coverage
-
-```{r depth and breadth of coverage}
-
-depth_of_coverage <- filter(db, Entity_Group == "Bam Merged Statistics",
-       Attribute == "Depth of Coverage", 
-       Sub_Attribute == "genome", 
-       Entity %not like% "%test%") %>%
-       arrange(Value) %>%
-       
-  
-
 ```
