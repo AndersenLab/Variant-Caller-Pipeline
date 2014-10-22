@@ -39,8 +39,6 @@ sys.path.append("/lscr2/andersenlab/dec211/scripts/pipeline/")
 #sys.path.append("/exports/people/andersenlab/dec211/python_modules/peewee/")
 #sys.path.remove("/usr/local/lib/python2.6/dist-packages/peewee-2.3.2-py2.6.egg")
 
-print sys.path
-
 from seq_utility_functions import *
 from conn import *
 from datetime import datetime
@@ -68,7 +66,7 @@ scripts_dir = "../../scripts/pipeline/"
 strain = sys.argv[1]
 
 process_steps = {
-		"debug_sqlite" : False,    # Uses an alternative database.
+		"debug_sqlite" : True,    # Uses an alternative database.
 		"md5" : True,            # Runs an MD5 hash on every file and saves to database
 		"fastq_stats" : True,     # Produce fastq stats on number of reads, unique reads, etc.
 		"align" : True,
@@ -83,13 +81,13 @@ process_steps = {
 
 # Determine system type:
 system_type =  os.uname()[0]
-reference = "ce10"
+reference = "c_elegans.WS235.genomic"
 md5_system = {"Linux" : "md5sum", "Darwin":"md5"} # Needed to make md5 work locally and on cluster.
 system_cores = {"Linux": 8, "Darwin": 4} # For use with BWA
 
 ## LCR File
-LCR_File = "WS220.wormbase.masked.bed.gz"
-genome_length = int(file("../reference/%s/%s.fa.amb" % (reference, reference), 'r').read().strip().split(" ")[0])
+LCR_File = "WS235.wormbase.masked.bed.gz"
+genome_length = int(file("../reference/%s/%s.fa.gz.amb" % (reference, reference), 'r').read().strip().split(" ")[0])
 
 #=================#
 # Process Fastq's #
@@ -115,31 +113,6 @@ fastq_pairs = zip(sorted([x for x in fq_set if x.find("1.fq.gz") != -1]), sorted
 if process_steps["md5"] == True:
 	save_md5(fq_set, strain)
 
-# Generate sequence fastq statistics using awk
-if process_steps["fastq_stats"] == True:
-	command = "parallel \"gunzip -c {} | awk -v filename={} '((NR-2)%%4==0){read=\$1; total++; count[read]++}END{for(read in count){if(!max||count[read]>max) {max=count[read];maxRead=read};if(count[read]==1){unique++}};print filename,total,unique,unique*100/total,maxRead,count[maxRead],count[maxRead]*100/total}'\" ::: %s" % ' '.join(fq_set)
-
-	if process_steps["fastq_stats"] == True:
-		fq_stats = subprocess.check_output(command, shell=True)
-		output = subprocess.check_output(command, shell=True)
-
-		for i in [x.split(" ") for x in fq_stats.split("\n")[:-1]]:
-			# Save fastq statistics
-			# i[0] -> Filename
-			save_eav(strain, "Number of Reads", i[1], Entity_Group = "Fastq Statistics", Sub_Entity = i[0], Tool="Awk")
-			save_eav(strain, "Unique Reads", i[2], Entity_Group = "Fastq Statistics", Sub_Entity = i[0], Tool="Awk")
-			save_eav(strain, "Frequency of Unique Reads", i[3], Entity_Group = "Fastq Statistics", Sub_Entity = i[0],  Tool="Awk")
-			save_eav(strain, "Most abundant Sequence", i[4], Entity_Group = "Fastq Statistics",Sub_Entity = i[0],  Tool="Awk")
-			save_eav(strain, "Number of times most abundant sequence occurs", i[5], Entity_Group = "Fastq Statistics", Sub_Entity = i[0],  Tool="Awk")
-			save_eav(strain, "Frequency of Most Abundant Sequence", i[6], Entity_Group = "Fastq Statistics", Sub_Entity = i[0], Tool="Awk")
-
-	for fq in fq_set:
-		fastq_info = extract_fastq_info(fq)
-		save_eav(strain, "Flowcell Lane",  fastq_info["flowcell_lane"], Entity_Group="Fastq_Meta", Sub_Entity= fq,  Tool="Python Script")
-		save_eav(strain, "Index", fastq_info["index"], Entity_Group =  "Fastq_Meta",  Sub_Entity= fq,  Tool="Python Script")
-		save_eav(strain, "Instrument", fastq_info["instrument"][1:], Entity_Group = "Fastq_Meta", Sub_Entity= fq, Tool="Python Script")
-		save_eav(strain, "Read Pair", fastq_info["pair"], Entity_Group =  "Fastq_Meta",  Sub_Entity= fq, Tool="Python Script")
-
 #=================#
 # Align Genome    #
 #=================#
@@ -153,7 +126,7 @@ sample = fq_set[0].split("-")[2]
 if process_steps["align"] == True:
 	for fastq_set in fastq_pairs:
 		# Generate bam name
-		reference_loc = "../reference/%s/%s.fa" % (reference, reference)
+		reference_loc = "../reference/%s/%s.fa.gz" % (reference, reference)
 		bam_name = '-'.join(fastq_set[0].split("-")[0:4] + fastq_set[1].split("-")[3:4])
 		split_bam_name = bam_name.split("-")
 		library_LB = split_bam_name[1]
@@ -183,6 +156,8 @@ if process_steps["align"] == True:
 		# Index Bam
 		os.system("samtools index %s.bam" % bam_name)
 
+
+		
 		# Store Bam Statistics
 		samtools_stats = subprocess.check_output("samtools stats %s.bam | grep '^SN'" % bam_name , shell=True )
 		for line in [x.split('\t')[1:3] for x in samtools_stats.split("\n")[:-1]]:
@@ -194,7 +169,6 @@ if process_steps["align"] == True:
 			save_eav(strain, i[1], i[2], Sub_Attribute=i[0], Entity_Group = "BAM Statistics", Sub_Entity = bam_name + ".bam", Tool = "Samtools Depth + Python")
 		
 		# Generate md5 of bam and store
-		print bam_name
 		save_md5([bam_name + ".bam"], Entity = strain)
 
 		# Remove temporary files
@@ -216,7 +190,7 @@ if process_steps["align"] == True:
 
 # Generate Depth and coverage statistics of the merged bam
 if process_steps["bam_stats"] == True:
-	for i in coverage(sample + ".bam", "chrM"):
+	for i in coverage(sample + ".bam", "CHROMOSOME_MtDNA"):
 		print i, "Merged"
 		save_eav(strain, i[1], i[2], Sub_Entity = sample + ".bam", Sub_Attribute=i[0], Entity_Group = "Bam Merged Statistics", Tool = "Samtools Depth + Python")
 		
@@ -232,7 +206,6 @@ if process_steps["bam_stats"] == True:
 	calc_coverage = float(line_dict["Reads Mapped"]) * float(line_dict["Average Length"]) / genome_length
 	save_eav(strain, "Depth of Coverage", calc_coverage, Entity_Group = "BAM Merged Statistics", Sub_Entity = sample + ".bam", Sub_Attribute = "(Reads Mapped * Avg. Read Length / Genome Length)", Tool = "Samtools")
 
-
 # Remove intermediates.
 for b in bam_set:
 	try:
@@ -242,9 +215,15 @@ for b in bam_set:
 	except:
 		pass
 
-
 # Finally - Generate and Save an md5 sum.
 save_md5([sample + ".bam"], Entity = strain)
+
+# Fetch contigs
+header = subprocess.check_output("samtools view -H %s.bam" % strain, shell = True)
+# Extract contigs from header and convert contigs to integers
+contigs = {}
+for x in re.findall("@SQ	SN:(?P<chrom>[A-Za-z0-9_]*)\WLN:(?P<length>[0-9]+)", header):
+	contigs[x[0]] = int(x[1])
 
 # Move bam to bam folder.
 os.system("mv %s.bam ../bam/%s.bam" % (strain, sample))
@@ -266,13 +245,8 @@ def gen_bcf_stats(strain, bcf, description, Sub_Attribute):
 		save_eav(strain, i[0], i[1], Entity_Group = "BCF Statistics", Sub_Entity = "%s.%s.bcf" % (strain, description), Sub_Attribute = Sub_Attribute, Tool="bcftools")
 
 
-# Fetch contigs
-contigs = {}
-for x in file("../reference/%s/%s.fa.fai" % (reference, reference), 'r').read().split("\n")[:-1]:
-	contigs[x.split("\t")[0]] = int(x.split("\t")[1])
-
 if process_steps["call_variants"] == True:
-	command = "parallel --gnu 'samtools mpileup -t DP,DV,DP4,SP -g -f ../reference/%s/%s.fa -r {} %s.bam | bcftools call --format-fields GQ,GP -c -v > ../individual_bcf/raw.%s.{}.bcf' ::: %s" % (reference, reference, strain, strain, ' '.join(contigs.keys()))
+	command = "parallel --gnu 'samtools mpileup -t DP,DV,DP4,SP -g -f ../reference/%s/%s.fa.gz -r {} %s.bam | bcftools call --format-fields GQ,GP -c -v > ../individual_bcf/raw.%s.{}.bcf' ::: %s" % (reference, reference, strain, strain, ' '.join(contigs.keys()))
 	os.system(command)
 	os.system("echo %s | bcftools concat -O b `ls -v ../individual_bcf/raw.%s.*.bcf` > ../individual_bcf/%s.single.bcf" % (contigs.keys(), sample , sample.replace(".txt","")))
 	
@@ -281,6 +255,3 @@ if process_steps["call_variants"] == True:
 
 	# Remove temporary files
 	os.system("rm -f ../individual_bcf/raw.%s.*" % sample)
-
-
-gen_bcf_stats(strain, "../individual_bcf/%s.single.bcf" %  strain, "Single", "No Filter")

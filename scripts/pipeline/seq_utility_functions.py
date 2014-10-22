@@ -91,7 +91,7 @@ def coverage(bam, mtchr = None):
 	header = subprocess.check_output("samtools view -H %s" % bam, shell = True)
 	# Extract contigs from header and convert contigs to integers
 	contigs = {}
-	for x in re.findall("@SQ	SN:(?P<chrom>[A-Za-z0-9]+)\WLN:(?P<length>[0-9]+)", header):
+	for x in re.findall("@SQ	SN:(?P<chrom>[A-Za-z0-9_]*)\WLN:(?P<length>[0-9]+)", header):
 		contigs[x[0]] = int(x[1])
 		# Calculate Coverage for each chromosome individually
 	coverage_dict = {}
