@@ -49,6 +49,6 @@ for i in files:
 		fq.fastq_stats()
 		for key,val in fq.fq1.items():
 			print key, val
-			save_eav(file_info["Strain"], key, val, Entity_Group = "Fastq Statistics", Sub_Entity = i[0], Tool="Awk")
+			save_eav(file_info["Strain"], key, val, Entity_Group = "Fastq Statistics", Sub_Entity = i, Tool="Awk")
 
 

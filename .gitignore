@@ -11,6 +11,9 @@
 *.gz
 *.tbi
 *.bcf
+*.pyc
+*.bai
+*.csi
 .RData
 .Rhistory
 docs/Manifest.numbers/*
@@ -22,7 +25,7 @@ data/reports/*
 data/radseq/*
 data/vcf/*
 data/bam/*
-results/*
+results/archived/*
 data/reference/*
 data/radseq/41188SNPset.txt
 
