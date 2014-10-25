@@ -5,8 +5,9 @@ output: html_document
 
 ```{r, message=FALSE, warning=FALSE}
 library(dplyr)
-setwd("/Users/daniel/Documents/git/Variant-Caller-Pipeline/analysis/")
-db <- tbl(src_sqlite(path = "seq_data.db"), "eav")
+library(data.table)
+setwd("/Users/dancook/Documents/Spring_Rotation/Variant-Caller-Pipeline/analysis/")
+db <- fread("seq_db.csv")
 ```
 
 ### Sum of Reads
@@ -15,3 +16,10 @@ db <- tbl(src_sqlite(path = "seq_data.db"), "eav")
 n_Reads <- format(sum(as.numeric(collect(filter(db, Attribute == "Number of Reads") %>% select(Value))$Value)), big.mark=",",scientific=F)
 sprintf("Number of Reads Sequenced: %s", n_Reads)
 ```
+
+```{r Total_FastQs}
+
+reads_by_strain <- filter(db, Attribute == "Number of Reads")
+
+```
+

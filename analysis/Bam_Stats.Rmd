@@ -1,12 +1,12 @@
 ---
 title: "Bam Statistics"
-output: html_document
+output: pdf_document
 ---
 
 ```{r, message=FALSE, warning=FALSE}
 library(dplyr)
 library(ggthemr)
-setwd("/Users/daniel/Documents/git/Variant-Caller-Pipeline/analysis/")
+setwd("/Users/dancook/Documents/Spring_Rotation/Variant-Caller-Pipeline/analysis")
 db <- tbl(src_sqlite(path = "seq_data.db"), "eav")
 ```
 
@@ -35,11 +35,14 @@ ggplot(depth_of_coverage) +
   scale_y_continuous(breaks=seq(0, 200, 10)) +
   theme(legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1, size=8)) +
   labs(x="Strain", y="Depth of Coverage", title="Depth of Coverage") +
-  theme(axis.text.x=element_text(angle=90)) +
-  geom_hline(yintercept=median_depth_of_coverage)
+  theme(axis.text.x=element_text(angle=90), axis.title.y=element_text(vjust=1)) +
+  geom_hline(yintercept=median_depth_of_coverage) 
+  
 
 
 ```
+
+__Depth of Coverage__ - Average depth of reads aligned at each base across entire genome. Median depth is `median_depth_of_coverage`
 
 ```{r breadth of coverage}
 
@@ -55,7 +58,41 @@ ggplot(breadth_of_coverage) +
   geom_line( aes(y=Value,x=reorder(Entity,Value), group=1)) +
   theme(legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1, size=8)) +
   labs(x="Strain", y="Breadth of Coverage", title="Breadth of Coverage") +
-  theme(axis.text.x=element_text(angle=90))
+  theme(axis.text.x=element_text(angle=90)) +
+  theme(axis.title.y=element_text(vjust=1))
+
+```
+
+__Breadth of Coverage__ Percentage of the WS235 reference genome that reads aligned to.
 
 
+### Ratio of Mitochondria to Nuclear Genome
+
+```{r mitochondria to nuclear}
+
+mt <- collect(filter(db, Entity_Group == "Bam Merged Statistics",
+       Attribute == "Depth of Coverage", 
+       Sub_Attribute == "CHROMOSOME_MtDNA", 
+       Entity %not like% "%test%") %>%
+       arrange(Value)) %>%
+       mutate(Value = as.numeric(Value))
+
+nuclear <- collect(filter(db, Entity_Group == "Bam Merged Statistics",
+       Attribute == "Depth of Coverage", 
+       Sub_Attribute == "nuclear", 
+       Entity %not like% "%test%") %>%
+       arrange(Value)) %>%
+       mutate(Value = as.numeric(Value))
+
+mt_ratio <- left_join(mt, nuclear, by = c("Entity") ) %>%
+  mutate(mt_nuc_ratio = Value.x/Value.y) %>%
+  select(Entity, mt_nuc_ratio, Value.x, Value.y)
+
+
+ggplot(mt_ratio) +
+  geom_line( aes(y=mt_nuc_ratio,x=reorder(Entity,mt_nuc_ratio), group=1)) +
+  scale_y_continuous(breaks=seq(0, 200, 10)) +
+  theme(legend.position="top", axis.text.x = element_text(angle = 90, hjust = 1, size=8)) +
+  labs(x="Strain", y="Fold", title="Ratio - Mitochondrial aligned reads to Nuclear DNA") +
+  theme(axis.text.x=element_text(angle=90), axis.title.y=element_text(vjust=1)) 
 ```
