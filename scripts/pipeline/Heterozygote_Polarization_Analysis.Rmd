@@ -1,0 +1,99 @@
+---
+title: "Heterozygote Polarization"
+author: "Daniel Cook"
+date: "August 4, 2014"
+output: html_document
+---
+
+```{r, echo=F}
+suppressMessages(library(data.table))
+library(ggplot2)
+library(dplyr)
+
+genetic_scale <- function(n) {
+  paste0(n/100000, "Mb")
+}
+
+```
+
+----
+
+### Load Data
+
+Loaded using data.table.
+```{r}
+h <- tbl_df(fread("het_polarization_log.txt"))
+```
+
+### Aggregate Delta
+
+Aggregate delta frequencies. Blue bars indicate that the abs. difference between PL(HOM) - PL(ALT) is less than 20.
+
+```{r, echo=FALSE}
+# Aggregate PL diff
+h_aggregate <- c(t(h[,c(-1,-2)]))
+h_aggregate <- h_aggregate[h_aggregate!=0]
+break_set <- sort(unique(c(seq(0,max(h_aggregate),10),seq(0,min(h_aggregate),-10))))
+ggplot() + 
+  geom_histogram(aes(x=h_aggregate),colour = "darkgreen", fill = "white", breaks=break_set) +
+  geom_histogram(aes(x=h_aggregate[abs(h_aggregate) < 20]),colour = "#9fc9ff", fill = "#0080ff", breaks=break_set) +
+  labs(x="Delta hom(REF) - hom(ALT) [ Blue remains heterozygous ]", title = "Delta Frequencies with Heterozygote Polarization")
+```
+
+
+### Deltas by Strain
+
+
+### Frequency of Heterozygotes by Position
+
+```{r}
+
+total_het <- rowSums(h[,c(-1,-2)] != 0)
+change_to_ALT <- rowSums(h[,c(-1,-2,-length(h))] > 0)
+change_to_REF <- rowSums(h[,c(-1,-2-length(h)-1,-length(h))] < 0)
+
+
+ggplot(h) +
+      geom_histogram(aes(x=POS, fill="Purple"), binwidth=10000) +
+      facet_grid(~CHROM, scales="free_x", space="free_x", margins=F)  +
+      scale_x_continuous(labels = genetic_scale) +
+      theme_bw() +
+      labs(title = "Distribution of All Variants (SNPs+Indels)", y="Frequency",x="Position")
+
+
+ggplot(h[total_het != 0,]) +
+      geom_histogram(aes(x=POS, fill="Green"), binwidth=10000) +
+      facet_grid(~CHROM, scales="free_x", space="free_x", margins=F)  +
+      scale_x_continuous(labels = genetic_scale) +
+      theme_bw() +
+      labs(title = "Distribution of Het Changes ", y="Frequency",x="Position")
+
+
+ggplot(h[change_to_ALT != 0,]) +
+      geom_histogram(aes(x=POS, fill="Blue"), binwidth=10000) +
+      facet_grid(~CHROM, scales="free_x", space="free_x", margins=F)  +
+      scale_x_continuous(labels = genetic_scale) +
+      theme_bw() +
+      labs(title = "PL(ALT) > PL(REF) ", y="Frequency",x="Position")
+
+ggplot(h[change_to_REF != 0,]) +
+      geom_histogram(aes(x=POS, fill="Red"), binwidth=10000) +
+      facet_grid(~CHROM, scales="free_x", space="free_x", margins=F)  +
+      scale_x_continuous(labels = genetic_scale) +
+      theme_bw() +
+      labs(title = "PL(REF) > PL(ALT) ", y="Frequency",x="Position")
+
+
+
+```
+
+### Aggregate Delta by Position
+
+```{r}
+agg_het <- rowSums(h[,c(-1,-2)])
+agg_to_ALT <- rowSums(h[,c(-1,-2)] > 0)
+agg_to_REF <- rowSums(h[,c(-1,-2)] < 0)
+
+
+
+```
