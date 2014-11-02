@@ -44,7 +44,7 @@ vcf_header = """##fileformat=VCFv4.1
 ##contig=<ID=CHROMOSOME_IV,length=17493793>
 ##contig=<ID=CHROMOSOME_V,length=20924149>
 ##contig=<ID=CHROMOSOME_X,length=17718866>
-##contig=<ID=CHROMOSOME_M,length=13794>
+##contig=<ID=CHROMOSOME_MtDNA,length=13794>
 ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
 """
