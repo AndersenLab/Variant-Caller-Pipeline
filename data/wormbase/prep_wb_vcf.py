@@ -56,7 +56,6 @@ vcf.write("#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	%s\n" % '\t'.join(strai
 
 def process_genotypes(strains):
 	gt_set = []
-	print strains
 	for i in strain_list:
 		if i in strains:
 			gt_set.append("1/1:100")
@@ -64,11 +63,9 @@ def process_genotypes(strains):
 			gt_set.append("0/0:100")
 	return '\t'.join(gt_set)
 
-c = 0
+c = 1
 with gzip.GzipFile("c_elegans.WS245.annotations.gff3.gz") as wb:
 	for line in wb:
-		if c > 1000:
-			break
 		if line.startswith("#"):
 			pass
 		else:
@@ -87,6 +84,8 @@ with gzip.GzipFile("c_elegans.WS245.annotations.gff3.gz") as wb:
 						vcf_record = "{CHROM}\t{POS}\t{ID}\t{REF}\t{ALT}\t100\t.\t.\tGT:GQ\t{GENOTYPES}\n".format(**locals())
 						vcf.write(vcf_record)
 						c += 1
+						if c % 1000 == 0:
+							print "%s records" % c
 			else:
 				pass
 
