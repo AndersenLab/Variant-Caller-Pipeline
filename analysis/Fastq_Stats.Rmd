@@ -7,14 +7,37 @@ output: html_document
 library(dplyr)
 library(data.table)
 setwd("/Users/dancook/Documents/Spring_Rotation/Variant-Caller-Pipeline/analysis/")
-db <- fread("seq_db.csv")
+db <- tbl_df(fread("seq_db.csv"))
 ```
 
 ### Sum of Reads
 
 ```{r NumReads}
-n_Reads <- format(sum(as.numeric(collect(filter(db, Attribute == "Number of Reads") %>% select(Value))$Value)), big.mark=",",scientific=F)
-sprintf("Number of Reads Sequenced: %s", n_Reads)
+n_reads <- sum(as.numeric((filter(db, !grepl("*test*",Entity)) %>% 
+  filter( Attribute == "Number of Reads") %>% 
+  select(Value))$Value))
+
+n_Reads_Formatted <- format(n_reads, big.mark=",",scientific=F)
+sprintf("Number of Reads Sequenced: %s", n_Reads_Formatted)
+```
+
+```{r Quantify Sources}
+
+fq_source <- mutate(db, s=str_split_fixed(db$Sub_Entity, "-",2)[,1]) %>%
+  filter(Entity_Group=="Fastq Statistics") %>%
+  group_by(s,Entity) %>%
+  summarize()
+
+fq_agg <- group_by(fq_source, s) %>%
+  summarize(c=n())
+
+# Andersen Strains
+Andersen <- filter(fq_source, s %in% c("BGI1", "BGI2", "BGI3","Princeton","Uchicago"))
+length(unique(Andersen$Entity))
+
+# Unique Strains
+unique(fq_source$Entity)
+
 ```
 
 ```{r Total_FastQs}

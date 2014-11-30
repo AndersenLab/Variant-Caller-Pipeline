@@ -7,7 +7,7 @@ output: pdf_document
 library(dplyr)
 library(ggthemr)
 setwd("/Users/dancook/Documents/Spring_Rotation/Variant-Caller-Pipeline/analysis")
-db <- tbl(src_sqlite(path = "seq_data.db"), "eav")
+db <- tbl_df(fread("seq_db.csv"))
 ```
 
 
@@ -15,11 +15,11 @@ db <- tbl(src_sqlite(path = "seq_data.db"), "eav")
 
 ```{r depth of coverage}
 
-depth_of_coverage <- collect(filter(db, Entity_Group == "Bam Merged Statistics",
+depth_of_coverage <- filter(db, Entity_Group == "BAM Merged Statistics",
        Attribute == "Depth of Coverage", 
        Sub_Attribute == "genome", 
-       Entity %not like% "%test%") %>%
-       arrange(Value)) %>%
+       !grepl("*test*",Entity)) %>%
+       arrange(Value) %>%
        mutate(Value = as.numeric(Value))
 
 
@@ -46,11 +46,12 @@ __Depth of Coverage__ - Average depth of reads aligned at each base across entir
 
 ```{r breadth of coverage}
 
-breadth_of_coverage <- collect(filter(db, Entity_Group == "Bam Merged Statistics",
+breadth_of_coverage <- filter(db, Entity_Group == "BAM Merged Statistics",
        Attribute == "Breadth of Coverage", 
        Sub_Attribute == "genome", 
-       Entity %not like% "%test%") %>%
-       arrange(Value)) %>%
+       !grepl("*test*",Entity),
+       Entity != "JU2574") %>%
+       arrange(Value) %>%
        mutate(Value = as.numeric(Value))
 
 
@@ -70,17 +71,17 @@ __Breadth of Coverage__ Percentage of the WS235 reference genome that reads alig
 
 ```{r mitochondria to nuclear}
 
-mt <- collect(filter(db, Entity_Group == "Bam Merged Statistics",
+mt <- collect(filter(db, Entity_Group == "BAM Merged Statistics",
        Attribute == "Depth of Coverage", 
        Sub_Attribute == "CHROMOSOME_MtDNA", 
-       Entity %not like% "%test%") %>%
+       !grepl("*test*",Entity)) %>%
        arrange(Value)) %>%
        mutate(Value = as.numeric(Value))
 
-nuclear <- collect(filter(db, Entity_Group == "Bam Merged Statistics",
+nuclear <- collect(filter(db, Entity_Group == "BAM Merged Statistics",
        Attribute == "Depth of Coverage", 
        Sub_Attribute == "nuclear", 
-       Entity %not like% "%test%") %>%
+       !grepl("*test*",Entity)) %>%
        arrange(Value)) %>%
        mutate(Value = as.numeric(Value))
 
